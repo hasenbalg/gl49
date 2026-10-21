@@ -200,8 +200,9 @@ class GlucoBridge:
             pass
         return None
 
-    async def download(self, target, timeout: float = 60.0):
-        meter = await self.connect(target)
+    async def download(self, target, timeout: float = 60.0,
+                       backend: Optional[str] = None):
+        meter = await self.connect(target, backend=backend)
         try:
             return await meter.download(timeout=timeout)
         finally:

@@ -60,6 +60,36 @@ status bits (battery low, insufficient sample, ...), and merged context
 (meal marker pre/postprandial/fasting/casual/bedtime, carbs, medication,
 exercise, HbA1c) when the meter sends context records.
 
+### Pairing (bonded meters)
+
+The GL49, Accu-Chek Guide and OneTouch Reflect show a 6-digit passkey on
+their display when pairing starts. `pair()` registers its own BlueZ
+agent and asks for the code **in the terminal** — no GUI needed, so it
+works over SSH or from a headless box:
+
+```python
+import asyncio
+from glucobridge import GlucoBridge, pair
+
+async def main():
+    address = "EA:7B:85:08:A1:D9"          # OneTouch Ultra Plus Reflect
+    # Interactive: prompts "passkey shown on device: _" in the terminal.
+    await pair(address)
+    # Scripted instead (e.g. code read from a photo of the display):
+    # await pair(address, passkey="630802")
+
+    # Pairing is one-time: BlueZ stores the keys in /var/lib/bluetooth,
+    # every later connect is transparent and fully unattended.
+    async with GlucoBridge() as gb:
+        readings = await gb.download(address, backend="verio")
+        print(f"{len(readings)} readings, newest: {readings[-1].timestamp}")
+
+asyncio.run(main())
+```
+
+If a desktop agent (blueman) is running it may answer the prompt first;
+`pair()` deliberately takes over as the default agent for its duration.
+
 ## Pairing notes
 
 * **Beurer GL 49** — enable Bluetooth in the device menu first (SET
