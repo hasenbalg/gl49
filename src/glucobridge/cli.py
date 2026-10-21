@@ -55,7 +55,7 @@ async def cmd_pair(args):
 
 async def _with_meter(args, coro):
     async with GlucoBridge() as gb:
-        meter = await gb.connect(args.address)
+        meter = await gb.connect(args.address, backend=getattr(args, "backend", None))
         try:
             return await coro(meter)
         finally:
@@ -93,7 +93,16 @@ async def cmd_info(args):
             print(f"stored records: {n}")
         except Exception as e:
             print(f"record count not available: {e}")
-    await _with_meter(args, run)
+    try:
+        await _with_meter(args, run)
+    except Exception as e:
+        print(f"backend connect failed ({e}); raw GATT dump:")
+        from bleak import BleakClient
+        async with BleakClient(args.address) as c:
+            for svc in c.services:
+                print(f"service {svc.uuid}")
+                for ch in svc.characteristics:
+                    print(f"  char {ch.uuid}  [{','.join(ch.properties)}]")
 
 
 def main(argv=None) -> int:
@@ -114,6 +123,8 @@ def main(argv=None) -> int:
 
     s = sub.add_parser("dump", help="download stored readings")
     s.add_argument("address")
+    s.add_argument("--backend", choices=["gls", "fora", "verio"],
+                   help="force a backend instead of auto-detecting")
     s.add_argument("--json", action="store_true")
     s.add_argument("--csv", metavar="FILE")
     s.add_argument("--since", help="ISO date/datetime filter")
@@ -122,10 +133,12 @@ def main(argv=None) -> int:
 
     s = sub.add_parser("watch", help="stream live measurements")
     s.add_argument("address")
+    s.add_argument("--backend", choices=["gls", "fora", "verio"])
     s.set_defaults(fn=cmd_watch)
 
     s = sub.add_parser("info", help="GATT dump + device info (diagnostics)")
     s.add_argument("address")
+    s.add_argument("--backend", choices=["gls", "fora", "verio"])
     s.set_defaults(fn=cmd_info)
 
     args = p.parse_args(argv)

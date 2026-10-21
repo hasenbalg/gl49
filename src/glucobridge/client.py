@@ -26,16 +26,20 @@ NAME_PATTERNS = [
     ("fora*", "fora"),
     ("td?link*", "fora"),            # FORA TD-Link series
     ("td[0-9][0-9]*", "fora"),       # FORA meters advertise their TD code
-    ("one?touch*", "verio"),         # OneTouch Ultra/Verio Reflect & Flex
+    ("onetouch*", "verio"),          # OneTouch Ultra/Verio Reflect & Flex
+    ("one touch*", "verio"),
     ("verio*", "verio"),
     ("ultra?plus*", "verio"),
 ]
 
-# service UUIDs seen in advertisements -> backend
+# service UUIDs seen in advertisements -> backend.  Order matters when a
+# device advertises several hints: LifeScan Reflect-family meters advertise
+# the standard Glucose Service as a decoy next to their real AF9DF7A1
+# service (2A18 only appears after bonding, and is empty even then).
 SERVICE_HINTS = {
+    "af9df7a1-e595-11e3-96b4-0002a5d5c51b": "verio",
     gatt.GLUCOSE_SERVICE: "gls",
     "0000fff0-0000-1000-8000-00805f9b34fb": "fora",
-    "af9df7a1-e595-11e3-96b4-0002a5d5c51b": "verio",
 }
 
 
@@ -55,9 +59,9 @@ class Advertisement:
 
 
 def classify(name: Optional[str], service_uuids: list[str]) -> str:
-    for u in service_uuids or []:
-        backend = SERVICE_HINTS.get(u.lower())
-        if backend:
+    uuids = {u.lower() for u in service_uuids or []}
+    for uuid, backend in SERVICE_HINTS.items():   # dict order = priority
+        if uuid in uuids:
             return backend
     lname = (name or "").lower().strip()
     if not lname:
