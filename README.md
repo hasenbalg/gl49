@@ -80,9 +80,10 @@ exercise, HbA1c) when the meter sends context records.
   directly (service FFF0). They never push live data, so `watch` polls
   the record count.
 * **OneTouch Reflect / Flex family** — connect on service `AF9DF7A1…`
-  (write F7A2, notify F7A3). Some models (Reflect) ask for pairing —
-  accept the iOS-style prompt with `glucobridge pair <addr>` (just
-  works). Like the FORA meters they never push: `watch` polls the
+  (write F7A2, notify F7A3). The Reflect asks for pairing
+  (live-verified): `glucobridge pair <addr>` prompts for the meter's
+  6-digit code in the terminal — no GUI agent needed; `--passkey NNNNNN`
+  for scripting. Like the FORA meters they never push: `watch` polls the
   record counter.
 * Alternatively pair once with `bluetoothctl`.
 
