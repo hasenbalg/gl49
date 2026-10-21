@@ -96,6 +96,14 @@ def test_decode_record_reflect_metadata():
     assert any(s.startswith("mentor_metadata_") for s in r.status)
 
 
+def test_live_reflect_error_slot_and_valid_vectors():
+    # live capture, Ultra Plus Reflect fw SI_04.01.03
+    valid = decode_record(bytes.fromhex("b8f660327b000001000000"))
+    assert valid.value == 123.0 and valid.error is None
+    err = decode_record(bytes.fromhex("45d9613200000000000203"))
+    assert err.value is None and err.error == "E-3"
+
+
 def test_decode_record_wrong_length():
     with pytest.raises(VerioError):
         decode_record(bytes(10))

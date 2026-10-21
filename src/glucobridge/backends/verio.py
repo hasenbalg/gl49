@@ -116,10 +116,17 @@ def decode_record(data: bytes) -> Reading:
             secs + TIME_OFFSET, dt.timezone.utc).replace(tzinfo=None),
         raw=bytes(data),
     )
-    # Blood Sugar Mentor / meal metadata (exact bits pending live analysis);
-    # kept raw so a live capture can decode it later.
+    # Reflect metadata (live capture, Ultra Plus Reflect fw SI_04.01.03):
+    #   valid reading : 00 01 00 00 00   (byte 7 = 0x01 "valid" flag)
+    #   error slot    : 00 00 00 02 0N   (bytes 9-10: class + Er code,
+    #                                     observed 02 03 == meter "E-03")
+    # Meal/mentor tags have not been observed yet; keep metadata raw.
     if any(metadata):
         r.status.append(f"mentor_metadata_{metadata.hex()}")
+    if mgdl == 0 and (metadata[3] or metadata[4]):
+        r.value = None
+        r.error = f"E-{metadata[4]}" if metadata[4] else \
+            f"meter_error_{metadata.hex()}"
     return r
 
 
