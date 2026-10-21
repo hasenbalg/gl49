@@ -168,6 +168,15 @@ timestamps; 0 mg/dL entries correspond to failed attempts (meter `Er`
 codes). Meal/mentor metadata bytes still kept raw pending tagged
 samples.
 
+**BLE watermark bug (live, 2026-10-21):** the `27 00` record counter
+under-reports memory — readings taken while Bluetooth was off do not
+bump it (counter said 8 while USB showed 10 slots; the two newest
+readings were invisible to BLE download). Fixed by probing record
+numbers past the watermark until the meter rejects two in a row.
+All BLE-visible valid readings carried metadata[1] = 0x01 and USB
+tagged them all `before` meal — metadata[1] is the prime suspect for
+the BLE meal flag (expect 0x02 on an `after` reading).
+
 **OneTouch Ultra Plus Reflect over USB** (2766:0010, live-verified
 2026-10-21): enumerates as USB mass storage with a doorbell FAT volume
 (label LIFESCAN, one startup.htm); data path is the documented Verio
