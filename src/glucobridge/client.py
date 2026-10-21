@@ -174,12 +174,31 @@ class GlucoBridge:
         if isinstance(target, Advertisement):
             backend = backend or target.backend
             target = target.address
+        if backend in (None, "unknown") and isinstance(target, str):
+            backend = await self._resolve_backend(target)
         if backend in (None, "unknown"):
             backend = "gls"  # GLS is the sane default; it will fail loudly
         cls = {"gls": GlucoseMeter, "fora": ForaMeter, "verio": VerioMeter}[backend]
         self._meter = cls(target)
         await self._meter.connect()
         return self._meter
+
+    async def _resolve_backend(self, address: str) -> Optional[str]:
+        """Classify a bare MAC address: BlueZ cache first, then a short scan."""
+        for adv in await _cached_devices():
+            if adv.address == address and adv.backend != "unknown":
+                return adv.backend
+        try:
+            found = await BleakScanner.discover(timeout=5.0, return_adv=True)
+            for dev, adv in found.values():
+                if dev.address == address:
+                    b = classify(adv.local_name or dev.name,
+                                 list(adv.service_uuids or []))
+                    if b != "unknown":
+                        return b
+        except Exception:
+            pass
+        return None
 
     async def download(self, target, timeout: float = 60.0):
         meter = await self.connect(target)
