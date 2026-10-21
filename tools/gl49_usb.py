@@ -55,28 +55,50 @@ class Gl49Usb:
                 t0 = time.time()
         return buf
 
-    def cmd(self, fr, retries=40, expect=8):
-        """Send frame, retrying every 250 ms until a reply arrives.
-        The first frame only wakes the MCU; replies follow on retries."""
+    def cmd(self, fr, retries=40, expect_cmd=None, min_len=8):
+        """Send frame, retrying every 250 ms until a VALID reply arrives.
+        The first frame only wakes the MCU; replies follow on retries.
+        A reply is valid if it starts 51 <expect_cmd> ... A5 with a
+        correct trailing checksum (sum of all preceding bytes & 0xFF)."""
         for i in range(retries):
             self.h.write(bytes([len(fr)]) + fr)
             r = self._drain(quiet=0.25)
-            if r:
-                if i:
-                    pass  # woke up on retry i
+            if not r:
+                continue
+            ok = (len(r) >= min_len and r[0] == 0x51
+                  and (expect_cmd is None or r[1] == expect_cmd)
+                  and sum(r[:-1]) & 0xFF == r[-1])
+            if ok:
+                return r
+            print(f"  (bad frame: {r.hex(' ')})")
+        return None
+
+    def wait_for_session(self, timeout=90.0):
+        """Poll 2B until the meter answers — plug the meter in NOW
+        (OFF -> cable -> USB symbol) while this runs."""
+        print(f"waiting up to {timeout:.0f} s for a fresh session — "
+              "replug the meter now (OFF -> cable -> wait for symbol) ...")
+        fr = frame(0x2B)
+        t_end = time.time() + timeout
+        while time.time() < t_end:
+            self.h.write(bytes([len(fr)]) + fr)
+            r = self._drain(quiet=0.2)
+            if (len(r) >= 8 and r[0] == 0x51 and r[1] == 0x2B
+                    and sum(r[:-1]) & 0xFF == r[-1]):
+                print(f"  session live: {r.hex(' ')}")
                 return r
         return None
 
     def count(self):
-        r = self.cmd(frame(0x2B))
-        if not r or len(r) < 8:
-            sys.exit(f"no 2B reply ({r!r})")
+        r = self.cmd(frame(0x2B), expect_cmd=0x2B)
+        if not r:
+            sys.exit("no valid 2B reply")
         print(f"2B resp: {r.hex(' ')}")
         return r[2] | r[3] << 8
 
     def fetch(self, idx):
-        r = self.cmd(frame(0x85, idx & 0xFF, (idx >> 8) & 0xFF))
-        return r
+        return self.cmd(frame(0x85, idx & 0xFF, (idx >> 8) & 0xFF),
+                        expect_cmd=0x85, min_len=16)
 
     def close(self):
         try:
@@ -87,6 +109,10 @@ class Gl49Usb:
 
 def main():
     g = Gl49Usb()
+    # The meter leaves PC-transfer mode shortly after plugging in, so
+    # wait for a live session (replug while this runs) then download fast.
+    if g.wait_for_session() is None:
+        sys.exit("no session — replug (meter OFF -> cable) and retry")
     total = g.count()
     print(f"records: {total}")
     for idx in range(0, total + 1, 2):
