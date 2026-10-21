@@ -78,26 +78,25 @@ async def pair(address: str, passkey: Optional[str] = None,
         def Cancel(self):
             pass
 
-    obj = bus.get_interface(BLUEZ_SERVICE, "/org/bluez")
     agent_path = "/org/bluez/glucobridge_agent"
     iface = Agent1()
     bus.export(agent_path, iface)
 
-    await obj.call_introspectable()
-    agent_mgr = bus.get_interface(BLUEZ_SERVICE, "/org/bluez")
-    await agent_mgr.call_method(AGENT_IFACE, "RegisterAgent",
-                                "ob", agent_path, "KeyboardDisplay")
-    await agent_mgr.call_method(AGENT_IFACE, "RequestDefault", ())
+    intro = await bus.introspect(BLUEZ_SERVICE, "/org/bluez")
+    bluez = bus.get_proxy_object(BLUEZ_SERVICE, "/org/bluez", intro)
+    agent_mgr = bluez.get_interface("org.bluez.AgentManager1")
+    await agent_mgr.call_register_agent(agent_path, "KeyboardDisplay")
+    await agent_mgr.call_request_default()
 
     dev_path = f"/org/bluez/{adapter}/dev_{address.replace(':', '_')}"
-    dev = bus.get_interface(BLUEZ_SERVICE, dev_path)
+    dev_intro = await bus.introspect(BLUEZ_SERVICE, dev_path)
+    dev_obj = bus.get_proxy_object(BLUEZ_SERVICE, dev_path, dev_intro)
+    dev = dev_obj.get_interface(DEVICE_IFACE)
     try:
-        await asyncio.wait_for(dev.call_method(DEVICE_IFACE, "Pair", ()),
-                               timeout=timeout)
+        await asyncio.wait_for(dev.call_pair(), timeout=timeout)
     finally:
         try:
-            await agent_mgr.call_method(AGENT_IFACE, "UnregisterAgent",
-                                        "o", agent_path)
+            await agent_mgr.call_unregister_agent(agent_path)
         except Exception:
             pass
         bus.disconnect()

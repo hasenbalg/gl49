@@ -59,15 +59,16 @@ class Advertisement:
 
 
 def classify(name: Optional[str], service_uuids: list[str]) -> str:
+    # Name patterns win: the Reflect family advertises the standard
+    # Glucose Service as a decoy, and its name is the reliable signal.
+    lname = (name or "").lower().strip()
+    if lname:
+        for pattern, backend in NAME_PATTERNS:
+            if fnmatch.fnmatch(lname, pattern):
+                return backend
     uuids = {u.lower() for u in service_uuids or []}
     for uuid, backend in SERVICE_HINTS.items():   # dict order = priority
         if uuid in uuids:
-            return backend
-    lname = (name or "").lower().strip()
-    if not lname:
-        return "unknown"
-    for pattern, backend in NAME_PATTERNS:
-        if fnmatch.fnmatch(lname, pattern):
             return backend
     return "unknown"
 
