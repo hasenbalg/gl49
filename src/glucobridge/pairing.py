@@ -23,6 +23,13 @@ DEVICE_IFACE = "org.bluez.Device1"
 ADAPTER_IFACE = "org.bluez.Adapter1"
 
 
+async def _ask(prompt: str) -> int:
+    """Read a code from stdin without blocking the D-Bus event loop."""
+    loop = asyncio.get_running_loop()
+    text = await loop.run_in_executor(None, input, prompt)
+    return int(text.strip())
+
+
 async def pair(address: str, passkey: Optional[str] = None,
                adapter: str = "hci0", timeout: float = 60.0) -> None:
     """Pair with a device, answering the passkey prompt with `passkey`.
@@ -47,23 +54,22 @@ async def pair(address: str, passkey: Optional[str] = None,
 
         @method()
         def DisplayPasskey(self, device: "o", passkey: "u", entered: "q"):
-            pass
+            print(f"host passkey: {passkey:06d}")
 
         @method()
         def DisplayPinCode(self, device: "o", pincode: "s"):
-            pass
+            print(f"host pincode: {pincode}")
 
         @method()
-        def RequestPinCode(self, device: "o") -> "s":
+        async def RequestPinCode(self, device: "o") -> "s":
             if self._passkey is None:
-                raise NotImplementedError("no pincode available")
+                self._passkey = await _ask("PIN code shown on device: ")
             return str(self._passkey)
 
         @method()
-        def RequestPasskey(self, device: "o") -> "u":
+        async def RequestPasskey(self, device: "o") -> "u":
             if self._passkey is None:
-                raise NotImplementedError(
-                    "device requires a passkey; rerun with --passkey NNNNNN")
+                self._passkey = await _ask("passkey shown on device: ")
             return self._passkey
 
         @method()
