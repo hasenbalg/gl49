@@ -197,12 +197,22 @@ class VerioMeter:
         return data
 
     # ---------------------------------------------------------------- public
+    @staticmethod
+    def _le_int(data: bytes, expect: tuple[int, ...] = (2, 4)) -> int:
+        """Little-endian unsigned int from a 2- or 4-byte result field.
+        (Verio Flex uses 4-byte counters; Ultra Plus Reflect was observed
+        answering the record-counter command with 2 bytes.)"""
+        if len(data) not in expect:
+            raise VerioError(
+                f"response wrong length {len(data)} "
+                f"(want {'/'.join(map(str, expect))}): {data.hex()}")
+        fmt = {2: "<H", 4: "<I"}[len(data)]
+        return struct.unpack(fmt, data)[0]
+
     async def sync_time(self) -> dt.datetime:
         """Query the meter clock and record the phone-vs-meter drift."""
         data = await self._command(bytes([0x20, 0x02]), _KIND_TIME)
-        if len(data) != 4:
-            raise VerioError(f"time response wrong length: {data.hex()}")
-        meter_unix = struct.unpack("<I", data)[0] + TIME_OFFSET
+        meter_unix = self._le_int(data, (4,)) + TIME_OFFSET
         meter_now = dt.datetime.fromtimestamp(meter_unix, dt.timezone.utc)
         if self.drift_correction:
             self._drift_ms = (dt.datetime.now(dt.timezone.utc)
@@ -211,15 +221,11 @@ class VerioMeter:
 
     async def highest_record_number(self) -> int:
         data = await self._command(bytes([0x27, 0x00]), _KIND_Rcounter)
-        if len(data) != 4:
-            raise VerioError(f"counter response wrong length: {data.hex()}")
-        return struct.unpack("<I", data)[0]
+        return self._le_int(data)
 
     async def record_count(self) -> int:
         data = await self._command(bytes([0x0A, 0x02, 0x06]), _KIND_Tcounter)
-        if len(data) != 2:
-            raise VerioError(f"count response wrong length: {data.hex()}")
-        return struct.unpack("<h", data)[0]
+        return self._le_int(data)
 
     async def read_record(self, number: int) -> Reading:
         data = await self._command(
