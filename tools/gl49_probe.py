@@ -2,20 +2,20 @@
 """GL49 USB probe: talk to the meter over its CP2110 HID-UART bridge.
 
 The Beurer GL49 exposes its PC interface as a Silicon Labs CP2110
-(HID USB-to-UART bridge, 10c4:ea80). The meter protocol
-(reverse-engineered from the vendor PC software):
+(HID USB-to-UART bridge, 10c4:ea80). The meter protocol (extracted
+from the vendor PC software):
 
-  * serial 1200 baud, 8N1, DTR asserted, read timeouts ~1.2 s
-  * commands are single ASCII characters:
-      'E'  handshake/ID   -> 5-byte response
-      'a'  read records   -> 32-byte response chunks (polled)
-      'P'  set time (?)
-  * the PC waits ~100-130 ms after each command before reading
+  * serial 19200 baud, 8N1, read timeout ~1 s, ~50 ms between frames
+  * FORA-style 8-byte frames: 51 CMD p2 p3 p4 p5 A3 CK
+    with CK = (sum of first 7 bytes) & 0xFF; meter echoes CMD
+  * CMD 0x24 device ID, 0x29 device info, 0x2B record count,
+    0x85 idxL idxH -> 16-byte response with TWO 6-byte records
+    (trailer byte 0xA5 at offset 14)
 
 Run against the meter while it shows the USB symbol on its display:
 
-    sudo python tools/gl49_probe.py               # protocol probe (1200/9600)
-    sudo python tools/gl49_probe.py --sweep       # old blind sweep
+    sudo python tools/gl49_probe.py               # protocol probe (19200)
+    sudo python tools/gl49_probe.py --sweep       # blind sweep
     sudo python tools/gl49_probe.py --baud 9600   # protocol at one baud
 """
 
@@ -34,16 +34,23 @@ import serial
 CP2110_VID = 0x10C4
 CP2110_PID = 0xEA80
 
-# Commands (reverse-engineered):
-#   'E': purge, write, sleep 100 ms, read 5 bytes
-#   'a': handshake, write, sleep 130 ms, read 32-byte chunks
-PROTOCOL_PROBES = [
-    ("E (ID)", b"E"),
-    ("a (all)", b"a"),
-    ("P (time)", b"P"),
-    ("e", b"e"),
-    ("A", b"A"),
-]
+def fora_frame(cmd, p2=0, p3=0, p4=0, p5=0):
+    f = bytes([0x51, cmd, p2, p3, p4, p5, 0xA3])
+    return f + bytes([sum(f) & 0xFF])
+
+
+# Commands extracted from the vendor PC software (see FINDINGS.md):
+#   download loop: 0x2B count (8-byte resp), then 0x85 idxL idxH
+#   per pair of records (16-byte resp, 2x 6-byte records, 0xA5 trailer)
+def protocol_probes():
+    return [
+        ("24 ID", fora_frame(0x24)),
+        ("29 info", fora_frame(0x29)),
+        ("2B count", fora_frame(0x2B)),
+        ("85 rec0", fora_frame(0x85, 0, 0)),
+        ("27 lot1", fora_frame(0x27)),
+        ("28 lot2", fora_frame(0x28)),
+    ]
 
 SWEEP_PROBES = [
     ("ENQ", b"\x05"),
@@ -139,9 +146,9 @@ def main():
     except Exception as exc:
         sys.exit(f"cannot open {path}: {exc}\n(hint: run with sudo, or add a udev rule for 10c4:ea80)")
 
-    probes = SWEEP_PROBES if args.sweep else PROTOCOL_PROBES
+    probes = SWEEP_PROBES if args.sweep else protocol_probes()
     bauds = [args.baud] if args.baud else (
-        SWEEP_BAUDS if args.sweep else [1200, 9600])
+        SWEEP_BAUDS if args.sweep else [19200, 9600])
 
     try:
         for baud in bauds:
@@ -153,7 +160,7 @@ def main():
             pass  # pyserial cp2110 backend teardown bug
 
     print("\ndone. any line with '<<<' is the meter talking.")
-    print("If 'E' answered, next step is the 'a' record download.")
+    print("If 2B answered, next step is the 0x85 record download.")
 
 
 if __name__ == "__main__":

@@ -194,9 +194,40 @@ framing). Quirks found live:
 * record timestamps are the raw meter clock (local, can be minutes
   off), unlike the drift-corrected BLE timestamps.
 
+## Beurer GL 49 over USB — CP2110 HID-UART, FORA-family frames
+
+The GL 49's mini-USB port is a Silicon Labs **CP2110 HID USB-to-UART
+bridge** (`10c4:ea80`, serial `013FF8E4`); the meter's MCU hangs off
+the bridge's UART pins. The wire protocol (extracted from the vendor
+PC software, live verification pending) is the same FORA-family frame
+set as the GlucoCheck Advance, at a different speed:
+
+* transport: CP2110 opened via the HID-UART API, **19200 baud 8N1**,
+  read timeout ~1 s, ~50 ms between frames;
+* framing: 8-byte `51 CMD p2 p3 p4 p5 A3 CK`, `CK = sum(first 7) & 0xFF`,
+  meter echoes the CMD byte;
+* `0x24` device ID, `0x29` device info (date/mask/firmware), `0x2B`
+  record count (`b3<<8|b2`), `0x27`/`0x28` lot info;
+* **`0x85 idxL idxH` record fetch**: 16-byte response
+  `51 85 <12 data bytes> A5 CK` carrying TWO 6-byte records
+  (12 bytes = 6 LE16 words, each word big-endian on the wire and
+  byte-swapped by the host; trailer `0xA5` at offset 14). The PC loops
+  idx = 0, 2, 4 … `count/2+1` times;
+* record fields are packed decimals/BCD (vendor parser unpacks value as
+  10-bit integer mg/dL plus /100 and %100 BCD splits; date/time fields
+  5- and 6-bit packed) — exact bit layout to be pinned down from a
+  live capture;
+* enumeration quirks: only enumerates on some ports (marginal
+  connector); needs the NEW USB enumeration scheme
+  (`old_scheme_first=0`); meter must show the USB symbol (connect
+  while switched OFF).
+
+`tools/gl49_probe.py` speaks this protocol (24/29/2B/85/27/28 frames at
+19200, then 9600).
+
 ## Open items
 * Live-test the GL49 and Accu-Chek Guide radios
   (GlucoCheck Advance + Ultra Plus Reflect BLE + USB: done 2026-10-21).
-* Optional: USB backend for the TESTAmed (manual says built-in USB with
-  "USb" mode) and the GL 49 (mini-USB serial) as a fallback path.
+* Live-verify the GL49 USB protocol above, then implement a `beurer_usb`
+  backend (CP2110 via pyserial `cp2110://` URL + FORA frames).
 * Optional: Home Assistant / MQTT bridge on top of `watch()`.
