@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "glucobridge"
+version = "0.2.0"
+description = "Read blood glucose meters over Bluetooth LE (standard Glucose Profile: Beurer GL 49, Accu-Chek Guide; TESTAmed/FORA via proprietary backend)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "bleak>=0.22",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio"]
+
+[project.scripts]
+glucobridge = "glucobridge.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
