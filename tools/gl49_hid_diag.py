@@ -44,7 +44,41 @@ def drain(h, seconds):
     return out
 
 
+def poll_mode(h):
+    """Mimic the vendor app's retry loop: hammer 0x2B at 19200.
+
+    The app re-sends the connect frame every ~50 ms while the UI
+    spinner runs; a sleeping MCU UART may answer only the frame AFTER
+    it wakes. Also try wake preambles (line break, 0x00s, 0x55s).
+    Expect an 18-byte reply: 51 2B <cnt lo> <cnt hi> ... A3? CK.
+    """
+    cfg = bytes([0x50]) + struct.pack(">IBBBB", 19200, 0, 0, 3, 0)
+    h.send_feature_report(cfg)
+    h.send_feature_report(bytes([0x41, 0x01]))
+    h.send_feature_report(bytes([0x43, 0x03]))
+    print("polling 0x2B at 19200 for 30 s (replug meter now: OFF -> cable "
+          "while OFF -> wait for USB symbol) ...")
+    t_end = time.time() + 30
+    i = 0
+    while time.time() < t_end:
+        i += 1
+        if i % 12 == 5:      # every ~4 s: line-break wake, then poll
+            h.send_feature_report(bytes([0x51, 0x01]))   # transmit break
+            time.sleep(0.1)
+            h.send_feature_report(bytes([0x52, 0x01]))   # stop break
+        if i % 12 == 11:     # byte preambles
+            h.write(bytes([4]) + b"\x00\x00\x00\x00")
+        h.write(bytes([len(FRAME)]) + FRAME)
+        r = drain(h, 0.25)
+        for p in r:
+            print(f"  <<< {p.hex(' ')}")
+    st = get(h, 0x42, 7)
+    if st and len(st) >= 5:
+        print(f"final: TX fifo {st[1] | st[2] << 8}, RX fifo {st[3] | st[4] << 8}")
+
+
 def main():
+    import sys
     devs = hid.enumerate(VID, PID)
     if not devs:
         sys.exit(f"no CP2110 {VID:04x}:{PID:04x} found (replug; meter OFF first)")
@@ -57,6 +91,11 @@ def main():
     v = get(h, 0x46, 3)
     print(f"version: {v.hex(' ') if v else 'FAILED'} (want part 0x0A)\n")
     h.send_feature_report(bytes([0x41, 0x01]))  # UART enable once
+
+    if "--poll" in sys.argv:
+        poll_mode(h)
+        h.close()
+        return
 
     for baud in BAUDS:
         # AN434 6.3: baud BIG-endian, parity, flow, data bits, stop bits
