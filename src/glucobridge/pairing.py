@@ -95,6 +95,20 @@ async def pair(address: str, passkey: Optional[str] = None,
     await agent_mgr.call_request_default_agent(agent_path)
 
     dev_path = f"/org/bluez/{adapter}/dev_{address.replace(':', '_')}"
+
+    # A forgotten device has no Device1 object until re-discovered.
+    root_intro = await bus.introspect(BLUEZ_SERVICE, "/")
+    root_obj = bus.get_proxy_object(BLUEZ_SERVICE, "/", root_intro)
+    manager = root_obj.get_interface("org.freedesktop.DBus.ObjectManager")
+    objects = await manager.call_get_managed_objects()
+    if dev_path not in objects:
+        from bleak import BleakScanner
+        found = await BleakScanner.discover(timeout=min(timeout, 30.0))
+        if not any(d.address == address for d in found):
+            raise RuntimeError(
+                f"{address} not discoverable — make the meter "
+                f"advertising and retry")
+
     dev_intro = await bus.introspect(BLUEZ_SERVICE, dev_path)
     dev_obj = bus.get_proxy_object(BLUEZ_SERVICE, dev_path, dev_intro)
     dev = dev_obj.get_interface(DEVICE_IFACE)
