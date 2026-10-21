@@ -117,6 +117,7 @@ class FakeVerioClient:
         self.is_connected = True
         self._cb = None
         self.meter_now = 1792500000          # unix seconds (~Oct 2026)
+        self.highest = 42                    # 27 00 watermark
         self.records = {
             41: (845815201, 118, bytes([0, 0x02, 1, 0, 0])),   # mentor set
             42: (845818801, 96, bytes(5)),
@@ -141,14 +142,18 @@ class FakeVerioClient:
                 self._send(meter_response(
                     struct.pack("<I", self.meter_now - TIME_OFFSET)))
             elif payload[:2] == bytes([0x27, 0x00]):
-                self._send(meter_response(struct.pack("<I", 42)))
+                self._send(meter_response(struct.pack("<I", self.highest)))
             elif payload[:3] == bytes([0x0A, 0x02, 0x06]):
                 self._send(meter_response(struct.pack("<h", 2)))
             elif payload[0] == 0xB3:
                 num = payload[1] | payload[2] << 8
-                secs, mgdl, meta = self.records[num]
-                self._send(meter_response(
-                    struct.pack("<Ih", secs, mgdl) + meta))
+                rec = self.records.get(num)
+                if rec is None:
+                    self._send(meter_response(b"\x03", rsp_type=0x09))
+                else:
+                    secs, mgdl, meta = rec
+                    self._send(meter_response(
+                        struct.pack("<Ih", secs, mgdl) + meta))
             else:
                 self._send(meter_response(b"\x03", rsp_type=0x09))
 
@@ -170,6 +175,19 @@ async def test_verio_download_flow():
     assert readings[0].timestamp < readings[1].timestamp
     assert all(r.device == "OneTouch Ultra Plus Reflect" for r in readings)
     assert any(s.startswith("mentor_metadata_") for s in readings[0].status)
+
+
+async def test_verio_download_probes_past_stale_watermark():
+    # live bug: readings taken while BT was off do not bump 27 00;
+    # USB showed the meter really has them at higher slot numbers
+    fake = FakeVerioClient()
+    fake.records[43] = (845822401, 111, bytes([0, 0x02, 2, 0, 0]))
+    fake.records[44] = (845898601, 127, bytes([0, 0x02, 1, 0, 0]))
+    meter = VerioMeter("AA:BB:CC:DD:EE:FF")
+    meter._client = fake
+    await meter.connect()
+    readings = await meter.download(timeout=15)
+    assert [r.value for r in readings] == [118.0, 96.0, 111.0, 127.0]
 
 
 async def test_verio_time_query():

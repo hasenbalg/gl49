@@ -248,7 +248,13 @@ class VerioMeter:
 
     async def download(self, timeout: float = 120.0,
                        max_records: int = 500) -> list[Reading]:
-        """Full history: time, counters, then each record newest-first."""
+        """Full history: time, counters, then each record newest-first.
+
+        The `27 00` watermark can lag the real memory (live Ultra Plus
+        Reflect: counter said 8 while USB showed 10 slots — readings
+        taken while Bluetooth was off do not bump it), so keep probing
+        past it until the meter rejects records.
+        """
         deadline = asyncio.get_running_loop().time() + timeout
         await self.sync_time()
         highest = await self.highest_record_number()
@@ -265,6 +271,19 @@ class VerioMeter:
                 readings.append(await self.read_record(number))
             except VerioError as e:
                 log.warning("record %d failed: %s", number, e)
+        # probe beyond the watermark (newest-first, stop after 2 rejects)
+        number, fails = highest + 1, 0
+        while fails < 2 and len(readings) < max_records:
+            if asyncio.get_running_loop().time() > deadline:
+                break
+            try:
+                readings.append(await self.read_record(number))
+                number += 1
+            except VerioError as e:
+                log.debug("record %d beyond watermark rejected: %s",
+                          number, e)
+                fails += 1
+                number += 1
         readings.sort(key=lambda r: (r.timestamp is None, r.timestamp,
                                      r.sequence or 0))
         return readings
