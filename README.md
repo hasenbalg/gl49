@@ -1,15 +1,27 @@
 # glucobridge
 
-Read blood glucose meters over Bluetooth LE — no vendor cloud, no vendor app.
+Read blood glucose meters over Bluetooth LE and USB — no vendor cloud, no vendor app.
 
-| Meter | Transport | Status |
+## Tested on real hardware
+
+| Meter | Transport | Verified |
 |---|---|---|
-| Beurer GL 49 / GL 40 | BLE, standard Glucose Service (0x181F) | supported |
-| Accu-Chek Guide / Guide Me | BLE, standard Glucose Service | supported |
-| TESTAmed GlucoCheck Advance | BLE, standard Glucose Service (0x181F) | supported (live-verified) |
-| iFORA GH810 / HE211 / TD-Link | BLE, FORA proprietary protocol (FFF0/FFF1) | supported (live-test pending) |
-| OneTouch Ultra Plus Reflect / Verio Reflect / Verio Flex / Ultra Plus Flex / Select Plus Flex | BLE, LifeScan "Verio" protocol (AF9DF7A1) | supported (live-verified) |
-| OneTouch Ultra Plus Reflect / Verio 2015 / Select Plus (+Flex) | USB, LifeScan MSC SCSI registers | supported (live-verified, `usb-dump`) |
+| TESTAmed GlucoCheck Advance (fw V1.2.29) | BLE, standard Glucose Service (`0x1808`) | full history download |
+| OneTouch Ultra Plus Reflect (fw SI_04.01.03) | BLE, LifeScan "Verio" protocol (`AF9DF7A1`) | pairing, full history, meal tags, error slots |
+| OneTouch Ultra Plus Reflect | USB, LifeScan MSC SCSI registers | full history, meal tags (`usb-dump`) |
+
+## Implemented, not yet tested on hardware
+
+These share code paths with the verified meters or published specs and are
+covered by simulated-meter unit tests, but no radio/USB capture exists yet:
+
+* **Beurer GL 49 / GL 40** — BLE, standard Glucose Service
+* **Accu-Chek Guide / Guide Me** — BLE, standard Glucose Service
+* **iFORA GH810 / HE211 / TD-Link** — BLE, FORA proprietary protocol (`FFF0`)
+* **Verio Reflect / Verio Flex / Ultra Plus Flex / Select Plus Flex** — BLE,
+  same Verio protocol as the tested Ultra Plus Reflect
+* **Verio 2015 / Select Plus (+Flex)** — USB, same MSC register protocol as
+  the tested Reflect
 
 The standard path follows the Bluetooth SIG GSS definitions for the Glucose
 Service: records (`0x2A18`), context (`0x2A34`), and the Record Access
@@ -127,8 +139,9 @@ If a desktop agent (blueman) is running it may answer the prompt first;
 .venv/bin/python -m pytest tests/ -q
 ```
 
-The test suite includes spec-derived byte vectors for all three protocol
-families (GSS RACP, FORA 8-byte frames, Verio framed commands) and
-simulated meters exercising the full download flows — no hardware needed.
+The test suite includes spec-derived byte vectors for all four protocol
+families (GSS RACP, FORA 8-byte frames, Verio framed commands, LifeScan
+MSC USB packets) and simulated meters exercising the full download flows
+— no hardware needed.
 Protocol reverse-engineering writeups: `FINDINGS.md` (GL49/GSS),
 `FINDINGS-fora.md` (FORA/TESTAmed), and the Verio section in `FINDINGS.md`.
