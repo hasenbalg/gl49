@@ -92,7 +92,7 @@ async def pair(address: str, passkey: Optional[str] = None,
     bluez = bus.get_proxy_object(BLUEZ_SERVICE, "/org/bluez", intro)
     agent_mgr = bluez.get_interface("org.bluez.AgentManager1")
     await agent_mgr.call_register_agent(agent_path, "KeyboardDisplay")
-    await agent_mgr.call_request_default()
+    await agent_mgr.call_request_default_agent(agent_path)
 
     dev_path = f"/org/bluez/{adapter}/dev_{address.replace(':', '_')}"
     dev_intro = await bus.introspect(BLUEZ_SERVICE, dev_path)
