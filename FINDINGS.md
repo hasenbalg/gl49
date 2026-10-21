@@ -173,9 +173,11 @@ under-reports memory — readings taken while Bluetooth was off do not
 bump it (counter said 8 while USB showed 10 slots; the two newest
 readings were invisible to BLE download). Fixed by probing record
 numbers past the watermark until the meter rejects two in a row.
-All BLE-visible valid readings carried metadata[1] = 0x01 and USB
-tagged them all `before` meal — metadata[1] is the prime suspect for
-the BLE meal flag (expect 0x02 on an `after` reading).
+
+**BLE meal tag CRACKED (live, 2026-10-21):** metadata[1] (record byte
+7) is the meal flag — 0x01 before / 0x02 after / 0 none — confirmed by
+cross-checking a USB `after` reading (USB meal_flag 2) against its BLE
+record (`mentor_metadata_0002000000`). Now surfaced as `Reading.meal`.
 
 **OneTouch Ultra Plus Reflect over USB** (2766:0010, live-verified
 2026-10-21): enumerates as USB mass storage with a doorbell FAT volume
@@ -194,9 +196,7 @@ framing). Quirks found live:
 
 ## Open items
 * Live-test the GL49 and Accu-Chek Guide radios
-  (GlucoCheck Advance + Ultra Plus Reflect: done 2026-10-21).
-* Live-capture OneTouch Reflect records with meal/mentor tags set to
-  decode the metadata bytes 6–10 (currently kept raw).
+  (GlucoCheck Advance + Ultra Plus Reflect BLE + USB: done 2026-10-21).
 * Optional: USB backend for the TESTAmed (manual says built-in USB with
   "USb" mode) and the GL 49 (mini-USB serial) as a fallback path.
 * Optional: Home Assistant / MQTT bridge on top of `watch()`.
