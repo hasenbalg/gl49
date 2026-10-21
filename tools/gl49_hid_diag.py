@@ -52,8 +52,8 @@ def main():
     rc = h.send_feature_report(bytes([0x41, 0x01]))
     print(f"2b. SET_FEATURE UART_ENABLE          -> rc {rc}")
 
-    # 3. write a frame as an OUTPUT report (report id 0 = first byte)
-    n = h.write(b"\x00" + FRAME)
+    # 3. write a frame as an OUTPUT report (AN434: byte 0 = payload length)
+    n = h.write(bytes([len(FRAME)]) + FRAME)
     print(f"3.  OUTPUT report {FRAME.hex(' ')} -> wrote {n} bytes")
 
     # 4. listen for INPUT reports (meter replies arrive here)
