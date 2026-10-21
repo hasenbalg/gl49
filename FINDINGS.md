@@ -158,9 +158,19 @@ Live vector: `030000ea0701140f000000007cb011` = 124 mg/dL,
 2026-01-20 15:00, capillary whole blood, finger (meter clock off — set
 it via the meter's SET menu; the device exposes no Current Time service).
 
+**OneTouch Ultra Plus Reflect** (`EA:7B:85:08:A1:D9`, fw SI_04.01.03):
+advertises the standard Glucose Service UUID as a **decoy** (no 2A18 in
+the real GATT) next to its AF9DF7A1 service — name-based routing wins.
+Pairs with passkey entry (meter displays the code). The record-counter
+command `27 00` answers with **2 bytes** (Flex: 4); records are the same
+11-byte layout as the Flex. 8/8 records downloaded with correct
+timestamps; 0 mg/dL entries correspond to failed attempts (meter `Er`
+codes). Meal/mentor metadata bytes still kept raw pending tagged
+samples.
+
 ## Open items
-* Live-test the GL49, Accu-Chek Guide and OneTouch Reflect radios
-  (GlucoCheck Advance: done 2026-10-21).
+* Live-test the GL49 and Accu-Chek Guide radios
+  (GlucoCheck Advance + Ultra Plus Reflect: done 2026-10-21).
 * Live-capture OneTouch Reflect records with meal/mentor tags set to
   decode the metadata bytes 6–10 (currently kept raw).
 * Optional: USB backend for the TESTAmed (manual says built-in USB with

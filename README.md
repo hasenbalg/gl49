@@ -8,7 +8,7 @@ Read blood glucose meters over Bluetooth LE — no vendor cloud, no vendor app.
 | Accu-Chek Guide / Guide Me | BLE, standard Glucose Service | supported |
 | TESTAmed GlucoCheck Advance | BLE, standard Glucose Service (0x181F) | supported (live-verified) |
 | iFORA GH810 / HE211 / TD-Link | BLE, FORA proprietary protocol (FFF0/FFF1) | supported (live-test pending) |
-| OneTouch Ultra Plus Reflect / Verio Reflect / Verio Flex / Ultra Plus Flex / Select Plus Flex | BLE, LifeScan "Verio" protocol (AF9DF7A1) | supported (live-test pending) |
+| OneTouch Ultra Plus Reflect / Verio Reflect / Verio Flex / Ultra Plus Flex / Select Plus Flex | BLE, LifeScan "Verio" protocol (AF9DF7A1) | supported (live-verified) |
 
 The standard path follows the Bluetooth SIG GSS definitions for the Glucose
 Service: records (`0x2A18`), context (`0x2A34`), and the Record Access
