@@ -145,10 +145,22 @@ backend keeps the metadata raw on `Reading.status`
 meter drift correction (meter clock is offset, not absolute).
 
 
+## Live test results (2026-10-21, real hardware)
+
+**TESTAmed GlucoCheck Advance** (`C0:26:DA:55:00:BB`, fw V1.2.29):
+standard Glucose Service 0x1808 (0x2A18/0x2A34/0x2A52) — the FORA
+rebrand theory was wrong; the Nordic UART service it also exposes is a
+decoy for glucose purposes. RACP `01 01` download works. One quirk:
+the concentration field carries the *formal* GSS SI unit kg/L (SFLOAT
+0xb07c = 124e-5 kg/L), not the practical mg/dL most meters send —
+`_postprocess` reinterprets values < 1 (kg/L → mg/dL, mol/L → mmol/L).
+Live vector: `030000ea0701140f000000007cb011` = 124 mg/dL,
+2026-01-20 15:00, capillary whole blood, finger (meter clock off — set
+it via the meter's SET menu; the device exposes no Current Time service).
+
 ## Open items
-* Live-test all meters against real radios (needs a BLE adapter).
-* Confirm the GlucoCheck Advance's TD project code (CMD 0x24) and, if it
-  is not in DECIMAL_MODELS, that values look sane in integer mg/dL.
+* Live-test the GL49, Accu-Chek Guide and OneTouch Reflect radios
+  (GlucoCheck Advance: done 2026-10-21).
 * Live-capture OneTouch Reflect records with meal/mentor tags set to
   decode the metadata bytes 6–10 (currently kept raw).
 * Optional: USB backend for the TESTAmed (manual says built-in USB with

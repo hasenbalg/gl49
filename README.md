@@ -6,7 +6,7 @@ Read blood glucose meters over Bluetooth LE — no vendor cloud, no vendor app.
 |---|---|---|
 | Beurer GL 49 / GL 40 | BLE, standard Glucose Service (0x181F) | supported |
 | Accu-Chek Guide / Guide Me | BLE, standard Glucose Service | supported |
-| TESTAmed GlucoCheck Advance | BLE, FORA proprietary protocol (FFF0/FFF1) | supported (live-test pending) |
+| TESTAmed GlucoCheck Advance | BLE, standard Glucose Service (0x181F) | supported (live-verified) |
 | iFORA GH810 / HE211 / TD-Link | BLE, FORA proprietary protocol (FFF0/FFF1) | supported (live-test pending) |
 | OneTouch Ultra Plus Reflect / Verio Reflect / Verio Flex / Ultra Plus Flex / Select Plus Flex | BLE, LifeScan "Verio" protocol (AF9DF7A1) | supported (live-test pending) |
 
@@ -71,9 +71,14 @@ exercise, HbA1c) when the meter sends context records.
   Keys are stored by BlueZ; later connects are transparent. Keep phones
   running the Beurer app away — a bonded phone hogs the connection.
 * **Accu-Chek Guide** — pairs the same way (passkey shown on the meter).
-* **TESTAmed GlucoCheck Advance / iFORA meters** — no pairing needed; the
-  FORA backend connects directly (service FFF0). They never push live
-  data, so `watch` polls the record count.
+* **TESTAmed GlucoCheck Advance** — standard Glucose Service, no pairing
+  dance needed; connects directly. It also exposes a Nordic UART service
+  (00001523-…) which is *not* used for glucose data. Its firmware
+  reports the concentration in the formal GSS SI unit (kg/L), which the
+  library converts to mg/dL automatically.
+* **iFORA meters** — no pairing needed; the FORA backend connects
+  directly (service FFF0). They never push live data, so `watch` polls
+  the record count.
 * **OneTouch Reflect / Flex family** — connect on service `AF9DF7A1…`
   (write F7A2, notify F7A3). Some models (Reflect) ask for pairing —
   accept the iOS-style prompt with `glucobridge pair <addr>` (just

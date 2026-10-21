@@ -22,7 +22,7 @@ NAME_PATTERNS = [
     ("acu?chek?guide*", "gls"),      # Accu-Chek Guide / Guide Me
     ("acucheck*", "gls"),
     ("guide*", "gls"),
-    ("glucocheck*", "fora"),         # TESTAmed GlucoCheck Advance
+    ("glucocheck*", "gls"),          # TESTAmed GlucoCheck Advance (live-verified: standard GLS)
     ("fora*", "fora"),
     ("td?link*", "fora"),            # FORA TD-Link series
     ("td[0-9][0-9]*", "fora"),       # FORA meters advertise their TD code

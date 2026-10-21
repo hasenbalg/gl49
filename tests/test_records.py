@@ -131,3 +131,30 @@ def test_merge_context():
 def test_context_truncated():
     with pytest.raises(RecordError):
         parse_glucose_context(bytes([0x01, 0x00, 0x00]))  # carbs promised, absent
+
+
+def test_live_glucocheck_advance_si_units():
+    """Captured live from a TESTAmed GlucoCheck Advance (2026-10-21).
+
+    The meter encodes the formal GSS SI unit (kg/L): SFLOAT 0xb07c =
+    124e-5 kg/L = 124 mg/dL.  Must not be reported as 0.00124 mg/dL.
+    """
+    rec = bytes.fromhex("030000ea0701140f000000007cb011")
+    r = parse_glucose_measurement(rec)
+    assert r.value == pytest.approx(124.0)
+    assert r.unit == "mg/dL"
+    assert r.timestamp == dt.datetime(2026, 1, 20, 15, 0, 0)
+    assert r.sequence == 0
+    assert r.sample_type == "capillary_whole_blood"
+    assert r.sample_location == "finger"
+    assert "si_units_kg_per_l" in r.status
+    assert r.error is None
+
+
+def test_si_units_mol_per_l():
+    """mmol/L variant: 5.5e-3 mol/L (SFLOAT exp -4, mantissa 55) -> 5.5 mmol/L."""
+    rec = bytes.fromhex("070000ea0701140f0000000037c011")
+    r = parse_glucose_measurement(rec)
+    assert r.value == pytest.approx(5.5)
+    assert r.unit == "mmol/L"
+    assert "si_units_mol_per_l" in r.status

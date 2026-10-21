@@ -163,6 +163,19 @@ def _postprocess(r: Reading) -> None:
             r.error = "hi"
         else:
             r.error = "no_value"
+        return
+    # Some meters (verified: TESTAmed GlucoCheck Advance) encode the
+    # *formal* GSS units for the concentration field — kg/L and mol/L —
+    # instead of the practical mg/dL / mmol/L most meters send.
+    # 0.00124 kg/L == 124 mg/dL.  A plausible reading is never < 1 in the
+    # practical unit, so reinterpret absurdly small values.
+    if r.value is not None and 0 < r.value < 1:
+        if r.unit == "mg/dL":
+            r.value *= 100_000.0
+            r.status = r.status + ["si_units_kg_per_l"]
+        elif r.unit == "mmol/L":
+            r.value *= 1_000.0
+            r.status = r.status + ["si_units_mol_per_l"]
 
 
 # ---------------------------------------------------------------------------

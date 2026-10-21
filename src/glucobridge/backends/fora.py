@@ -1,7 +1,11 @@
-"""Backend for TESTAmed GlucoCheck Advance (FORA Care rebrand).
+"""Backend for iFORA / FORA Care meters (GH810, HE211, TD-Link series).
 
 Protocol reverse-engineered and live-verified; full writeup in
 FINDINGS-fora.md.
+
+NOTE: the TESTAmed GlucoCheck Advance was long suspected to be a FORA
+rebrand, but live testing (2026-10-21) showed it is a standard Glucose
+Service device — it is served by the `gls` backend, not this one.
 
 Summary: BLE GATT service FFF0, one write+notify characteristic FFF1, no
 bonding.  All exchanges are 8-byte frames ``51 CMD p2 p3 p4 p5 A3 CK``
