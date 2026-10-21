@@ -34,6 +34,7 @@ from .pairing import pair
 from .backends.gls import GlucoseMeter
 from .backends.fora import ForaMeter
 from .backends.verio import VerioMeter
+from .backends.lifescan_usb import LifeScanUSBMeter
 from .records import (
     parse_glucose_measurement, parse_glucose_context, merge_context,
 )

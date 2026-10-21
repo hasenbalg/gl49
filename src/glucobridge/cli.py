@@ -105,6 +105,26 @@ async def cmd_info(args):
                     print(f"  char {ch.uuid}  [{','.join(ch.properties)}]")
 
 
+async def cmd_usb_dump(args):
+    from .backends.lifescan_usb import LifeScanUSBMeter, detect_device
+    device = args.device or detect_device()
+    if not device:
+        print("no LifeScan USB meter found (lsblk should show vendor "
+              "'LifeScan'); pass --device /dev/sgN", file=sys.stderr)
+        return 1
+    meter = LifeScanUSBMeter(device)
+    await asyncio.to_thread(meter.connect)
+    try:
+        info = await asyncio.to_thread(meter.device_info)
+        if not args.json:
+            print(f"# {device}: {info}", file=sys.stderr)
+        readings = await asyncio.to_thread(meter.download)
+    finally:
+        meter.close()
+    readings = _filter_since(readings, args.since)
+    _readings_out(readings, args)
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="glucobridge",
                                 description="Read BLE blood glucose meters")
@@ -140,6 +160,16 @@ def main(argv=None) -> int:
     s.add_argument("address")
     s.add_argument("--backend", choices=["gls", "fora", "verio"])
     s.set_defaults(fn=cmd_info)
+
+    s = sub.add_parser("usb-dump",
+                       help="download readings over USB (LifeScan MSC "
+                            "meters; unmount the LIFESCAN volume first)")
+    s.add_argument("--device", metavar="/dev/sgN",
+                   help="sg/block node (default: auto-detect by vendor)")
+    s.add_argument("--json", action="store_true")
+    s.add_argument("--csv", metavar="FILE")
+    s.add_argument("--since", help="ISO date/datetime filter")
+    s.set_defaults(fn=cmd_usb_dump)
 
     args = p.parse_args(argv)
     logging.basicConfig(
