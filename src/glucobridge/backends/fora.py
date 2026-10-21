@@ -172,10 +172,12 @@ class ForaMeter:
         for attempt in range(retries + 1):
             self._buf.clear()  # like the app: flush RX before every write
             self._pending = asyncio.get_running_loop().create_future()
+            log.debug("tx: %s", cmd_frame.hex())
             try:
                 await self._client.write_gatt_char(FORA_CHAR, cmd_frame,
                                                    response=True)
                 resp = await asyncio.wait_for(self._pending, self.timeout)
+                log.debug("rx: %s", resp.hex())
             except asyncio.TimeoutError:
                 await self._reset()
                 if attempt < retries:

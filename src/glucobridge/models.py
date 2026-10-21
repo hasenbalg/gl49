@@ -92,7 +92,9 @@ class Reading:
     # ---------------------------------------------------------------- export
     def to_dict(self) -> dict:
         d = asdict(self)
-        d.pop("raw", None)
+        raw = d.pop("raw", None)
+        if raw is not None:
+            d["raw"] = bytes(raw).hex()
         d["mgdl"] = self.mgdl
         d["mmol_l"] = self.mmol_l
         if self.timestamp is not None:

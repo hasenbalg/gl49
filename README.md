@@ -62,11 +62,14 @@ exercise, HbA1c) when the meter sends context records.
 
 ## Pairing notes
 
-* **Beurer GL 49** — enable Bluetooth by entering the memory view, the
-  device shows a 6-digit code; `glucobridge pair <addr> --passkey NNNNNN`
-  answers the BlueZ prompt. Keys are stored by BlueZ; later connects are
-  transparent. Transfers start when you power the meter off or pull up the
-  memory.
+* **Beurer GL 49** — enable Bluetooth in the device menu first (SET
+  until the BT symbol, toggle on, confirm with SET). The meter only
+  advertises while it wants to transfer (BT symbol flashing): press the
+  Apple/app key, pull out the test strip, call up the memory, or switch
+  it off. It then shows a 6-digit code;
+  `glucobridge pair <addr> --passkey NNNNNN` answers the BlueZ prompt.
+  Keys are stored by BlueZ; later connects are transparent. Keep phones
+  running the Beurer app away — a bonded phone hogs the connection.
 * **Accu-Chek Guide** — pairs the same way (passkey shown on the meter).
 * **TESTAmed GlucoCheck Advance / iFORA meters** — no pairing needed; the
   FORA backend connects directly (service FFF0). They never push live

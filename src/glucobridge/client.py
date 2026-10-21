@@ -68,11 +68,54 @@ def classify(name: Optional[str], service_uuids: list[str]) -> str:
     return "unknown"
 
 
+async def _cached_devices() -> list[Advertisement]:
+    """Devices BlueZ already knows from earlier discoveries.
+
+    bleak's discover() only reports devices that *appear* during the scan
+    window; a meter discovered moments earlier (e.g. by bluetoothctl) sits
+    in BlueZ's object cache and would otherwise make scans look empty.
+    """
+    try:
+        from dbus_fast.aio import MessageBus
+        from dbus_fast import BusType
+        bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+        intro = await bus.introspect("org.bluez", "/")
+        obj = bus.get_proxy_object("org.bluez", "/", intro)
+        manager = obj.get_interface("org.freedesktop.DBus.ObjectManager")
+        objects = await manager.call_get_managed_objects()
+        bus.disconnect()
+    except Exception:
+        return []
+    out = []
+    for path, ifaces in objects.items():
+        dev = ifaces.get("org.bluez.Device1")
+        if not dev:
+            continue
+        addr = dev.get("Address")
+        if not addr:
+            continue
+        name = dev.get("Name") or dev.get("Alias")
+        uuids = [str(u).lower() for u in (dev.get("UUIDs") or [])]
+        rssi = dev.get("RSSI")
+        out.append(Advertisement(
+            address=str(addr),
+            name=str(name) if name else None,
+            rssi=int(rssi) if rssi is not None else None,
+            has_glucose_service=any(
+                u.lower() == gatt.GLUCOSE_SERVICE for u in uuids),
+            backend=classify(str(name) if name else None, uuids),
+            service_uuids=uuids,
+        ))
+    return out
+
+
 async def scan(timeout: float = 10.0, all_devices: bool = False) -> list[Advertisement]:
     """Scan for BLE glucose meters.
 
     By default only devices that advertise the Glucose Service or match a
     known meter name are returned; pass all_devices=True for everything.
+    Devices cached from earlier discoveries are included as well (marked
+    with rssi=None when their last RSSI is unknown).
     """
     found = await BleakScanner.discover(timeout=timeout, return_adv=True)
     results = []
@@ -90,7 +133,15 @@ async def scan(timeout: float = 10.0, all_devices: bool = False) -> list[Adverti
             backend=backend,
             service_uuids=uuids,
         ))
-    results.sort(key=lambda a: -(a.rssi or -999))
+    seen = {a.address for a in results}
+    for cached in await _cached_devices():
+        if cached.address in seen:
+            continue
+        if not all_devices and cached.backend == "unknown":
+            continue
+        seen.add(cached.address)
+        results.append(cached)
+    results.sort(key=lambda a: -(a.rssi if a.rssi is not None else -999))
     return results
 
 
