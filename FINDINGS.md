@@ -168,6 +168,21 @@ timestamps; 0 mg/dL entries correspond to failed attempts (meter `Er`
 codes). Meal/mentor metadata bytes still kept raw pending tagged
 samples.
 
+**OneTouch Ultra Plus Reflect over USB** (2766:0010, live-verified
+2026-10-21): enumerates as USB mass storage with a doorbell FAT volume
+(label LIFESCAN, one startup.htm); data path is the documented Verio
+2015 SCSI register protocol (READ/WRITE(10) to LBA 3/4/5, same
+LifeScan shared binary packet + CRC-16/CCITT-FALSE as BLE, different
+framing). Quirks found live:
+* the medium is only present while the FAT volume is MOUNTED —
+  unmounting ejects it (SCSI NOT READY / MEDIUM NOT PRESENT);
+* records carry native meal flags (0 none / 1 before / 2 after) — the
+  Reflect's Test Tracker tags tests automatically by time of day;
+* USB record count excludes meter error slots (BLE shows them as
+  0-value E-records);
+* record timestamps are the raw meter clock (local, can be minutes
+  off), unlike the drift-corrected BLE timestamps.
+
 ## Open items
 * Live-test the GL49 and Accu-Chek Guide radios
   (GlucoCheck Advance + Ultra Plus Reflect: done 2026-10-21).

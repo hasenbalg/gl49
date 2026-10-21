@@ -9,6 +9,7 @@ Read blood glucose meters over Bluetooth LE — no vendor cloud, no vendor app.
 | TESTAmed GlucoCheck Advance | BLE, standard Glucose Service (0x181F) | supported (live-verified) |
 | iFORA GH810 / HE211 / TD-Link | BLE, FORA proprietary protocol (FFF0/FFF1) | supported (live-test pending) |
 | OneTouch Ultra Plus Reflect / Verio Reflect / Verio Flex / Ultra Plus Flex / Select Plus Flex | BLE, LifeScan "Verio" protocol (AF9DF7A1) | supported (live-verified) |
+| OneTouch Ultra Plus Reflect / Verio 2015 / Select Plus (+Flex) | USB, LifeScan MSC SCSI registers | supported (live-verified, `usb-dump`) |
 
 The standard path follows the Bluetooth SIG GSS definitions for the Glucose
 Service: records (`0x2A18`), context (`0x2A34`), and the Record Access
@@ -32,6 +33,8 @@ glucobridge pair AA:BB:CC:DD:EE:FF --passkey 123456   # GL49 shows a 6-digit PIN
 glucobridge dump AA:BB:CC:DD:EE:FF --csv readings.csv # full history
 glucobridge watch AA:BB:CC:DD:EE:FF   # live readings (meter pushes on power-off)
 glucobridge info AA:BB:CC:DD:EE:FF    # GATT dump + device info (diagnostics)
+glucobridge usb-dump                  # LifeScan meters over USB (keep the
+                                      # LIFESCAN volume mounted; needs root)
 ```
 
 `dump --json` and `--since 2026-10-01` also work.

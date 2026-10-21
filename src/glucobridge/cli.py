@@ -163,7 +163,8 @@ def main(argv=None) -> int:
 
     s = sub.add_parser("usb-dump",
                        help="download readings over USB (LifeScan MSC "
-                            "meters; unmount the LIFESCAN volume first)")
+                            "meters; keep the volume MOUNTED — unmounting "
+                            "ejects the medium)")
     s.add_argument("--device", metavar="/dev/sgN",
                    help="sg/block node (default: auto-detect by vendor)")
     s.add_argument("--json", action="store_true")
