@@ -81,19 +81,67 @@ exercise, HbA1c) when the meter sends context records.
 
 ### USB meters (no Bluetooth needed)
 
+Both USB backends are plain synchronous classes (no asyncio) and work
+as context managers. They need root (or a udev rule for the device
+node) and `pip install "glucobridge[usb]"` for the GL49.
+
+**Beurer GL 49** — switch the meter OFF, plug the USB cable, the LCD
+shows a USB symbol. The meter leaves transfer mode shortly after
+plug-in, so call `wait_for_session()` (it polls until the meter
+answers — replug while it runs) and download immediately after:
+
 ```python
 from glucobridge import Gl49UsbMeter
+from glucobridge.backends.gl49_usb import SessionLost, UsbError
 
-with Gl49UsbMeter() as m:              # needs root (hidraw) + pip install hidapi
-    if not m.wait_for_session(90):     # switch meter OFF, plug USB while
-        raise SystemExit("no session") # this runs; meter shows USB symbol
-    print(m.device_info())             # {'code': '0x4149', 'model': 'FORA TD4149 ...'}
-    for r in m.download():
-        print(r.timestamp, f"{r.value:.0f} mg/dL")
+try:
+    with Gl49UsbMeter() as m:            # auto-detects the CP2110 (10c4:ea80)
+        if not m.wait_for_session(timeout=90):
+            raise SystemExit("no session — meter OFF -> plug USB -> "
+                             "wait for the USB symbol, then retry")
+        print(m.device_info())
+        # {'code': '0x4149', 'model': 'FORA TD4149 (Beurer GL 49)', ...}
+
+        readings = m.download()          # oldest first, .sequence assigned
+        for r in readings:
+            print(r.timestamp, f"{r.value:.0f} mg/dL", r.raw.hex())
+except UsbError as e:
+    raise SystemExit(str(e))             # no CP2110 found / no permission
+except SessionLost:
+    raise SystemExit("unplugged mid-download — replug and retry")
 ```
 
-`LifeScanUSBMeter` follows the same `connect()` → `download()` shape for
-OneTouch MSC meters.
+**OneTouch Ultra Plus Reflect / Verio 2015 family** — enumerates as
+USB mass storage; the data path is SCSI registers, so the LIFESCAN
+volume must stay MOUNTED (unmounting ejects the medium):
+
+```python
+from glucobridge import LifeScanUSBMeter
+from glucobridge.backends.lifescan_usb import detect_device
+
+device = detect_device()                 # /dev/sgN by SCSI vendor "LifeScan"
+if device is None:
+    raise SystemExit("no LifeScan meter on USB")
+
+with LifeScanUSBMeter(device) as m:
+    print(m.device_info())               # serial, model, firmware
+    for r in m.download():
+        print(r.timestamp, f"{r.value:.0f} mg/dL", r.meal or "")
+```
+
+Every `Reading` exports the same way regardless of transport —
+`r.mgdl` / `r.mmol_l` for unit conversion, `r.to_dict()` for JSON,
+`r.to_csv_row()` for CSV:
+
+```python
+import json
+from glucobridge import Gl49UsbMeter
+
+with Gl49UsbMeter() as m:
+    m.wait_for_session()
+    data = [r.to_dict() for r in m.download()]
+print(json.dumps(data, indent=2))
+```
 
 ### Pairing (bonded meters)
 
