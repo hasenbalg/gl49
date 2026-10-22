@@ -214,7 +214,8 @@ set as the GlucoCheck Advance, at a different speed:
   fetch idx 0..ceil(count/2)-1, trailer `0xA5` at offset 14);
 * record format (exact vendor parser at `0x418fa0`, mixed endianness —
   do not guess bit-splits): `value = r5 | ((r4 & 3) << 8)` (byte5 is the
-  LOW byte), `year = 1984 + (r0 >> 1)`, `month = (r1 >> 5) | ((r0 & 1) << 3)`,
+  LOW byte), `year = 1984 + (r0 >> 1)`, `month = ((r1 >> 5) | ((r0 & 1) << 3)) + 1`
+  (1-based, confirmed vs meter display 21.10.2026),
   `day = r1 & 0x1F`, `hour = r2 & 0x1F`, `minute = r3 & 0x3F`. The app
   parses NO temperature; leftover bits (`r4>>2`, `r2>>5`, `r3>>6`) are
   ignored (likely meal-mark bits);

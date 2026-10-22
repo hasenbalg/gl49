@@ -49,7 +49,7 @@ def decode_record(rec):
     r0, r1, r2, r3, r4, r5 = rec
     value = r5 | ((r4 & 3) << 8)
     year = 1984 + (r0 >> 1)
-    month = (r1 >> 5) | ((r0 & 1) << 3)
+    month = ((r1 >> 5) | ((r0 & 1) << 3)) + 1  # meter display: raw 9 -> Oct
     day = r1 & 0x1F
     hour = r2 & 0x1F
     minute = r3 & 0x3F
