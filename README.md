@@ -9,6 +9,7 @@ Read blood glucose meters over Bluetooth LE and USB — no vendor cloud, no vend
 | TESTAmed GlucoCheck Advance (fw V1.2.29) | BLE, standard Glucose Service (`0x1808`) | full history download |
 | OneTouch Ultra Plus Reflect (fw SI_04.01.03) | BLE, LifeScan "Verio" protocol (`AF9DF7A1`) | pairing, full history, meal tags, error slots |
 | OneTouch Ultra Plus Reflect | USB, LifeScan MSC SCSI registers | full history, meal tags (`usb-dump`) |
+| Beurer GL 49 (FORA TD4149 rebrand) | USB, CP2110 HID-UART + FORA frames | full history (`usb-dump --backend gl49`) |
 
 ## Implemented, not yet tested on hardware
 
@@ -47,6 +48,9 @@ glucobridge watch AA:BB:CC:DD:EE:FF   # live readings (meter pushes on power-off
 glucobridge info AA:BB:CC:DD:EE:FF    # GATT dump + device info (diagnostics)
 glucobridge usb-dump                  # LifeScan meters over USB (keep the
                                       # LIFESCAN volume mounted; needs root)
+glucobridge usb-dump --backend gl49   # Beurer GL49 over USB: switch the
+                                      # meter OFF, plug the cable, wait for
+                                      # the USB symbol (needs root, hidapi)
 ```
 
 `dump --json` and `--since 2026-10-01` also work.
@@ -74,6 +78,22 @@ Each `Reading` carries: value + unit (`mg/dL`/`mmol/L`, both conversions via
 status bits (battery low, insufficient sample, ...), and merged context
 (meal marker pre/postprandial/fasting/casual/bedtime, carbs, medication,
 exercise, HbA1c) when the meter sends context records.
+
+### USB meters (no Bluetooth needed)
+
+```python
+from glucobridge import Gl49UsbMeter
+
+with Gl49UsbMeter() as m:              # needs root (hidraw) + pip install hidapi
+    if not m.wait_for_session(90):     # switch meter OFF, plug USB while
+        raise SystemExit("no session") # this runs; meter shows USB symbol
+    print(m.device_info())             # {'code': '0x4149', 'model': 'FORA TD4149 ...'}
+    for r in m.download():
+        print(r.timestamp, f"{r.value:.0f} mg/dL")
+```
+
+`LifeScanUSBMeter` follows the same `connect()` → `download()` shape for
+OneTouch MSC meters.
 
 ### Pairing (bonded meters)
 

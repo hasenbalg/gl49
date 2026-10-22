@@ -15,6 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-asyncio"]
+usb = ["hidapi>=0.14"]          # GL49 USB (CP2110 HID-UART)
 
 [project.scripts]
 glucobridge = "glucobridge.cli:main"

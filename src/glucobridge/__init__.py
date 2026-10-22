@@ -35,6 +35,7 @@ from .backends.gls import GlucoseMeter
 from .backends.fora import ForaMeter
 from .backends.verio import VerioMeter
 from .backends.lifescan_usb import LifeScanUSBMeter
+from .backends.gl49_usb import Gl49UsbMeter
 from .records import (
     parse_glucose_measurement, parse_glucose_context, merge_context,
 )
@@ -44,7 +45,7 @@ from .sfloat import decode_sfloat16, encode_sfloat16
 __version__ = "0.2.0"
 __all__ = [
     "GlucoBridge", "GlucoseMeter", "Reading", "Advertisement",
-    "scan", "classify", "pair",
+    "scan", "classify", "pair", "LifeScanUSBMeter", "Gl49UsbMeter",
     "parse_glucose_measurement", "parse_glucose_context", "merge_context",
     "racp", "gatt", "decode_sfloat16", "encode_sfloat16", "__version__",
 ]

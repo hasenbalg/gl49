@@ -229,7 +229,6 @@ set as the GlucoCheck Advance, at a different speed:
 
 ## Open items
 * Live-test the GL49 and Accu-Chek Guide radios
-  (GlucoCheck Advance + Ultra Plus Reflect BLE + USB: done 2026-10-21).
-* Live-verify the GL49 USB protocol above, then implement a `beurer_usb`
-  backend (CP2110 via pyserial `cp2110://` URL + FORA frames).
+  (GlucoCheck Advance + Ultra Plus Reflect BLE + USB: done 2026-10-21;
+  GL49 USB: done 2026-10-22 — `gl49_usb` backend, live-verified).
 * Optional: Home Assistant / MQTT bridge on top of `watch()`.

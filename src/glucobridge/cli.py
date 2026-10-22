@@ -106,6 +106,8 @@ async def cmd_info(args):
 
 
 async def cmd_usb_dump(args):
+    if getattr(args, "backend", "lifescan") == "gl49":
+        return await _usb_dump_gl49(args)
     from .backends.lifescan_usb import LifeScanUSBMeter, detect_device
     device = args.device or detect_device()
     if not device:
@@ -119,6 +121,35 @@ async def cmd_usb_dump(args):
         if not args.json:
             print(f"# {device}: {info}", file=sys.stderr)
         readings = await asyncio.to_thread(meter.download)
+    finally:
+        meter.close()
+    readings = _filter_since(readings, args.since)
+    _readings_out(readings, args)
+
+
+async def _usb_dump_gl49(args):
+    from .backends.gl49_usb import Gl49UsbMeter, SessionLost, UsbError
+    meter = Gl49UsbMeter()
+    try:
+        await asyncio.to_thread(meter.connect)
+    except UsbError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    try:
+        if not await asyncio.to_thread(meter.wait_for_session, 90.0):
+            print("no session — meter OFF -> plug USB -> wait for the USB "
+                  "symbol, then retry", file=sys.stderr)
+            return 1
+        try:
+            info = await asyncio.to_thread(meter.device_info)
+        except UsbError:
+            info = {}
+        if not args.json:
+            print(f"# {meter.product}: {info}", file=sys.stderr)
+        readings = await asyncio.to_thread(meter.download)
+    except SessionLost as e:
+        print(f"{e} — replug and retry", file=sys.stderr)
+        return 1
     finally:
         meter.close()
     readings = _filter_since(readings, args.since)
@@ -163,10 +194,13 @@ def main(argv=None) -> int:
 
     s = sub.add_parser("usb-dump",
                        help="download readings over USB (LifeScan MSC "
-                            "meters; keep the volume MOUNTED — unmounting "
-                            "ejects the medium)")
+                            "meters: keep the LIFESCAN volume MOUNTED; "
+                            "GL49: --backend gl49, needs root)")
     s.add_argument("--device", metavar="/dev/sgN",
-                   help="sg/block node (default: auto-detect by vendor)")
+                   help="sg/block node (default: auto-detect by vendor; "
+                        "LifeScan backend only)")
+    s.add_argument("--backend", choices=["lifescan", "gl49"],
+                   default="lifescan")
     s.add_argument("--json", action="store_true")
     s.add_argument("--csv", metavar="FILE")
     s.add_argument("--since", help="ISO date/datetime filter")
