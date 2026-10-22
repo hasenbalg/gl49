@@ -37,21 +37,26 @@ MEAL = {0: "", 1: " [before meal]", 2: " [after meal]", 3: " [QC]"}
 
 
 def decode_record(rec):
-    """6-byte GL49 record (wire order):
-    word0 LE: day(5) month(4) year-2000(6)
-    word1 BE: minute(6) hour(5) type(2)   type: 0 gen 1 AC 2 PC 3 QC
-    word2 LE: value(10) temp(6)           mg/dL, degC
+    """6-byte GL49 record, EXACT vendor parser (GlucoMemory 0x418fa0):
+    value  = r5 | ((r4 & 3) << 8)
+    year   = 1984 + (r0 >> 1)        (epoch pinned vs meter display)
+    month  = (r1 >> 5) | ((r0 & 1) << 3)
+    day    = r1 & 0x1F
+    hour   = r2 & 0x1F
+    minute = r3 & 0x3F
+    r4>>2 and r2>>5, r3>>6 are NOT parsed by the vendor app (unknown).
     """
-    w0 = rec[0] | rec[1] << 8
-    day, month, year = w0 & 0x1F, (w0 >> 5) & 0xF, 2000 + ((w0 >> 9) & 0x3F)
-    w1 = rec[2] << 8 | rec[3]
-    minute, hour, mtype = w1 & 0x3F, (w1 >> 6) & 0x1F, (w1 >> 11) & 3
-    w2 = rec[4] | rec[5] << 8
-    value, temp = w2 & 0x3FF, (w2 >> 10) & 0x3F
-    if not (day and 1 <= month <= 12):
+    r0, r1, r2, r3, r4, r5 = rec
+    value = r5 | ((r4 & 3) << 8)
+    year = 1984 + (r0 >> 1)
+    month = (r1 >> 5) | ((r0 & 1) << 3)
+    day = r1 & 0x1F
+    hour = r2 & 0x1F
+    minute = r3 & 0x3F
+    if not (day and 1 <= month <= 12 and hour < 24 and minute < 60):
         return None
     return (f"{year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}  "
-            f"{value:4d} mg/dL  temp {temp:2d}C{MEAL[mtype]}")
+            f"{value:4d} mg/dL")
 
 
 class Gl49Usb:
