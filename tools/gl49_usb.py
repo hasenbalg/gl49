@@ -33,6 +33,27 @@ def swap_pairs(b):
     return bytes(x for i in range(0, len(b) - 1, 2) for x in (b[i + 1], b[i]))
 
 
+MEAL = {0: "", 1: " [before meal]", 2: " [after meal]", 3: " [QC]"}
+
+
+def decode_record(rec):
+    """6-byte GL49 record (wire order):
+    word0 LE: day(5) month(4) year-2000(6)
+    word1 BE: minute(6) hour(5) type(2)   type: 0 gen 1 AC 2 PC 3 QC
+    word2 LE: value(10) temp(6)           mg/dL, degC
+    """
+    w0 = rec[0] | rec[1] << 8
+    day, month, year = w0 & 0x1F, (w0 >> 5) & 0xF, 2000 + ((w0 >> 9) & 0x3F)
+    w1 = rec[2] << 8 | rec[3]
+    minute, hour, mtype = w1 & 0x3F, (w1 >> 6) & 0x1F, (w1 >> 11) & 3
+    w2 = rec[4] | rec[5] << 8
+    value, temp = w2 & 0x3FF, (w2 >> 10) & 0x3F
+    if not (day and 1 <= month <= 12):
+        return None
+    return (f"{year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}  "
+            f"{value:4d} mg/dL  temp {temp:2d}C{MEAL[mtype]}")
+
+
 class Gl49Usb:
     def __init__(self):
         devs = hid.enumerate(VID, PID)
@@ -139,22 +160,19 @@ def run(g):
     dump("29 info ", g.cmd(frame(0x29), expect_cmd=0x29))
     total = g.count()
     print(f"records: {total}")
-    # fetch EVERY index (step 1, overlapping) to pin the idx->record mapping
-    for idx in range(0, total + 1):
+    # idx N carries records 2N and 2N+1 (12 bytes = two 6-byte records)
+    for idx in range((total + 1) // 2):
         r = g.fetch(idx)
         dump(f"idx {idx}", r)
         if r and len(r) >= 14:
             data = r[2:14]
-            sw = swap_pairs(data)
-            print(f"         data    {data.hex(' ')}")
-            print(f"         swapped {sw.hex(' ')}")
             for half in range(2):
-                rec = sw[half * 6:half * 6 + 6]
-                w0 = rec[0] | rec[1] << 8
-                w1 = rec[2] | rec[3] << 8
-                w2 = rec[4] | rec[5] << 8
-                print(f"         rec{half}: {rec.hex(' ')}  "
-                      f"words {w0:#06x} {w1:#06x} {w2:#06x}")
+                rec = data[half * 6:half * 6 + 6]
+                if rec == b"\x00" * 6:
+                    continue
+                dec = decode_record(rec)
+                print(f"    rec{2 * idx + half}: {rec.hex(' ')}  "
+                      f"-> {dec if dec else '(undecoded)'}")
     g.close()
 
 
