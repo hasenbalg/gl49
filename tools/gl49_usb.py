@@ -20,6 +20,10 @@ import hid
 VID, PID = 0x10C4, 0xEA80
 
 
+class SessionLost(RuntimeError):
+    """USB device vanished mid-session (unplug / meter left transfer mode)."""
+
+
 def frame(cmd, p2=0, p3=0):
     body = bytes([0x51, cmd, p2, p3, 0, 0, 0xA3])
     return body + bytes([sum(body) & 0xFF])
@@ -47,7 +51,10 @@ class Gl49Usb:
         buf = b""
         t0 = time.time()
         while time.time() - t0 < quiet and len(buf) < limit:
-            r = self.h.read(64, timeout_ms=50)
+            try:
+                r = self.h.read(64, timeout_ms=50)
+            except OSError:
+                raise SessionLost() from None
             if r:
                 r = bytes(r)
                 n = r[0]
@@ -107,24 +114,39 @@ class Gl49Usb:
             pass
 
 
+def dump(label, r):
+    if not r:
+        print(f"{label}: (no reply)")
+        return
+    print(f"{label}: {r.hex(' ')}  ({len(r)} bytes)")
+
+
 def main():
     g = Gl49Usb()
+    try:
+        run(g)
+    except SessionLost:
+        g.close()
+        sys.exit("device unplugged / meter left transfer mode — replug and rerun")
+
+
+def run(g):
     # The meter leaves PC-transfer mode shortly after plugging in, so
     # wait for a live session (replug while this runs) then download fast.
     if g.wait_for_session() is None:
         sys.exit("no session — replug (meter OFF -> cable) and retry")
+    dump("24 ID   ", g.cmd(frame(0x24), expect_cmd=0x24))
+    dump("29 info ", g.cmd(frame(0x29), expect_cmd=0x29))
     total = g.count()
     print(f"records: {total}")
-    for idx in range(0, total + 1, 2):
+    # fetch EVERY index (step 1, overlapping) to pin the idx->record mapping
+    for idx in range(0, total + 1):
         r = g.fetch(idx)
-        if not r:
-            print(f"idx {idx}: (no reply)")
-            continue
-        print(f"idx {idx}: raw  {r.hex(' ')}  ({len(r)} bytes)")
-        if len(r) >= 14:
+        dump(f"idx {idx}", r)
+        if r and len(r) >= 14:
             data = r[2:14]
             sw = swap_pairs(data)
-            print(f"         data {data.hex(' ')}")
+            print(f"         data    {data.hex(' ')}")
             print(f"         swapped {sw.hex(' ')}")
             for half in range(2):
                 rec = sw[half * 6:half * 6 + 6]
