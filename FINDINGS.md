@@ -212,13 +212,13 @@ set as the GlucoCheck Advance, at a different speed:
   `51 85 <12 data bytes> A5 CK` carrying TWO 6-byte records —
   idx N returns records `2N` and `2N+1` (zero-padded past the count;
   fetch idx 0..ceil(count/2)-1, trailer `0xA5` at offset 14);
-* record format (exact vendor parser at `0x418fa0`, mixed endianness —
-  do not guess bit-splits): `value = r5 | ((r4 & 3) << 8)` (byte5 is the
-  LOW byte), `year = 1984 + (r0 >> 1)`, `month = ((r1 >> 5) | ((r0 & 1) << 3)) + 1`
-  (1-based, confirmed vs meter display 21.10.2026),
-  `day = r1 & 0x1F`, `hour = r2 & 0x1F`, `minute = r3 & 0x3F`. The app
-  parses NO temperature; leftover bits (`r4>>2`, `r2>>5`, `r3>>6`) are
-  ignored (likely meal-mark bits);
+* record format — the PC first byte-swaps every 16-bit word of the wire
+  bytes (`0x418e12`), then the parser (`0x418fa0`) reads, on the swapped
+  bytes `r0..r5`: `value = r5 | ((r4 & 3) << 8)`, `year = 2000 + (r0 >> 1)`,
+  `month = (r1 >> 5) | ((r0 & 1) << 3)` (1 = January), `day = r1 & 0x1F`,
+  `hour = r2 & 0x1F`, `minute = r3 & 0x3F`. The app parses NO
+  temperature; leftover bits (`r4>>2`, `r2>>5`, `r3>>6`) are ignored
+  (likely meal-mark bits);
 * enumeration quirks: only enumerates on some ports (marginal
   connector); needs the NEW USB enumeration scheme
   (`old_scheme_first=0`); meter must show the USB symbol (connect
