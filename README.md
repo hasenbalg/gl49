@@ -4,19 +4,20 @@ Read blood glucose meters over Bluetooth LE and USB — no vendor cloud, no vend
 
 ## Tested on real hardware
 
-| Meter | Transport | Verified |
-|---|---|---|
-| TESTAmed GlucoCheck Advance (fw V1.2.29) | BLE, standard Glucose Service (`0x1808`) | full history download |
-| OneTouch Ultra Plus Reflect (fw SI_04.01.03) | BLE, LifeScan "Verio" protocol (`AF9DF7A1`) | pairing, full history, meal tags, error slots |
-| OneTouch Ultra Plus Reflect | USB, LifeScan MSC SCSI registers | full history, meal tags (`usb-dump`) |
-| Beurer GL 49 (FORA TD4149 rebrand) | USB, CP2110 HID-UART + FORA frames | full history (`usb-dump --backend gl49`) |
+| Meter | Transport | Backend class | Verified |
+|---|---|---|---|
+| TESTAmed GlucoCheck Advance (fw V1.2.29) | BLE, standard Glucose Service (`0x1808`) | `GlucoseMeter` | full history download |
+| OneTouch Ultra Plus Reflect (fw SI_04.01.03) | BLE, LifeScan "Verio" protocol (`AF9DF7A1`) | `VerioMeter` | pairing, full history, meal tags, error slots |
+| OneTouch Ultra Plus Reflect | USB, LifeScan MSC SCSI registers | `LifeScanUSBMeter` | full history, meal tags (`usb-dump`) |
+| Beurer GL 49 (FORA TD4149 rebrand) | USB, CP2110 HID-UART + FORA frames | `Gl49UsbMeter` | full history (`usb-dump --backend gl49`) |
 
 ## Implemented, not yet tested on hardware
 
 These share code paths with the verified meters or published specs and are
 covered by simulated-meter unit tests, but no radio/USB capture exists yet:
 
-* **Beurer GL 49 / GL 40** — BLE, standard Glucose Service
+* **Beurer GL 49 / GL 40** — BLE, standard Glucose Service (the GL 49's
+  USB path is tested, see table above)
 * **Accu-Chek Guide / Guide Me** — BLE, standard Glucose Service
 * **iFORA GH810 / HE211 / TD-Link** — BLE, FORA proprietary protocol (`FFF0`)
 * **Verio Reflect / Verio Flex / Ultra Plus Flex / Select Plus Flex** — BLE,
