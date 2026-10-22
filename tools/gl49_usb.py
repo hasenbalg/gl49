@@ -37,19 +37,22 @@ MEAL = {0: "", 1: " [before meal]", 2: " [after meal]", 3: " [QC]"}
 
 
 def decode_record(rec):
-    """6-byte GL49 record, EXACT vendor parser (GlucoMemory 0x418fa0):
-    value  = r5 | ((r4 & 3) << 8)
-    year   = 1984 + (r0 >> 1)        (epoch pinned vs meter display)
-    month  = (r1 >> 5) | ((r0 & 1) << 3)
-    day    = r1 & 0x1F
-    hour   = r2 & 0x1F
-    minute = r3 & 0x3F
-    r4>>2 and r2>>5, r3>>6 are NOT parsed by the vendor app (unknown).
+    """6-byte GL49 record, EXACT vendor pipeline: the PC first byte-swaps
+    every 16-bit word of the wire bytes (GlucoMemory 0x418e12), then the
+    parser at 0x418fa0 reads:
+      value  = r5 | ((r4 & 3) << 8)
+      year   = 2000 + (r0 >> 1)
+      month  = (r1 >> 5) | ((r0 & 1) << 3)   (1 = January)
+      day    = r1 & 0x1F
+      hour   = r2 & 0x1F
+      minute = r3 & 0x3F
+    No temperature field (app ignores r4>>2, r2>>5, r3>>6).
     """
-    r0, r1, r2, r3, r4, r5 = rec
+    w = rec  # wire order
+    r0, r1, r2, r3, r4, r5 = w[1], w[0], w[3], w[2], w[5], w[4]  # swapped
     value = r5 | ((r4 & 3) << 8)
-    year = 1984 + (r0 >> 1)
-    month = ((r1 >> 5) | ((r0 & 1) << 3)) + 1  # meter display: raw 9 -> Oct
+    year = 2000 + (r0 >> 1)
+    month = (r1 >> 5) | ((r0 & 1) << 3)
     day = r1 & 0x1F
     hour = r2 & 0x1F
     minute = r3 & 0x3F
