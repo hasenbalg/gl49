@@ -26,7 +26,9 @@ from __future__ import annotations
 
 import asyncio
 import sys
+import threading
 import time
+from functools import partial
 from typing import Optional
 
 BLUEZ_SERVICE = "org.bluez"
@@ -72,11 +74,54 @@ def _trace(msg: str, tag: str = "pair") -> None:
     print(f"[{tag} {time.monotonic() % 3600:7.2f}s] {msg}", file=sys.stderr)
 
 
-async def _ask(prompt: str) -> int:
-    """Read a code from stdin without blocking the D-Bus event loop."""
+async def _ask(prompt: str, pending: Optional[set] = None) -> int:
+    """Read a code from stdin without blocking the D-Bus event loop.
+
+    input() runs in a DAEMON thread: if BlueZ aborts the handshake
+    while a prompt is open the await gets cancelled and the process can
+    still exit -- nothing joins a thread stuck at input() (the old
+    non-daemon executor made the CLI hang until you pressed Enter).
+    `pending` collects open prompt futures so the agent can cancel them
+    the moment BlueZ calls Cancel()/Release().
+    """
     loop = asyncio.get_running_loop()
-    text = await loop.run_in_executor(None, input, prompt)
-    return int(text.strip())
+    fut: asyncio.Future = loop.create_future()
+    if pending is not None:
+        pending.add(fut)
+        fut.add_done_callback(pending.discard)
+
+    def settle(fn) -> None:
+        # the loop may already be closed when a stale prompt is
+        # answered -- that is fine, just drop it
+        try:
+            loop.call_soon_threadsafe(fn)
+        except RuntimeError:
+            pass
+
+    def win(text: str) -> None:
+        if not fut.done():
+            try:
+                fut.set_result(int(text.strip()))
+            except ValueError as e:
+                fut.set_exception(e)
+
+    def fail(e: BaseException) -> None:
+        if not fut.done():
+            fut.set_exception(e)
+
+    def worker() -> None:
+        try:
+            text = input(prompt)
+        except BaseException as exc:        # EOFError / KeyboardInterrupt
+            # bind eagerly: Python deletes the `as` name at block exit,
+            # so a lambda would capture a dead reference
+            settle(partial(fail, exc))
+        else:
+            settle(partial(win, text))
+
+    threading.Thread(target=worker, daemon=True,
+                     name="glucobridge-prompt").start()
+    return await fut
 
 
 async def pair(address: str, passkey: Optional[str] = None,
@@ -188,10 +233,23 @@ async def _pair_once(address: str, passkey: Optional[str],
         def __init__(self):
             super().__init__(AGENT_IFACE)
             self._passkey = int(passkey) if passkey else None
+            self._pending: set = set()
+
+        def _abort_prompt(self) -> None:
+            # BlueZ aborted (or another agent took over): settle any
+            # open input() await WHILE our D-Bus socket is still open,
+            # so dbus-fast can deliver the error reply instead of
+            # dumping "Bad file descriptor" tracebacks on teardown.
+            if self._pending:
+                print(file=sys.stderr)      # tidy the dangling prompt
+            for fut in list(self._pending):
+                fut.cancel()
+            self._pending.clear()
 
         @method()
         def Release(self):
             _trace("agent Release() -- another agent took default status")
+            self._abort_prompt()
 
         @method()
         def DisplayPasskey(self, device: "o", passkey: "u", entered: "q"):
@@ -205,7 +263,8 @@ async def _pair_once(address: str, passkey: Optional[str],
         async def RequestPinCode(self, device: "o") -> "s":
             _trace("BlueZ -> RequestPinCode")
             if self._passkey is None:
-                self._passkey = await _ask("PIN code shown on device: ")
+                self._passkey = await _ask("PIN code shown on device: ",
+                                           self._pending)
             _trace(f"sending PIN {self._passkey}")
             return str(self._passkey)
 
@@ -213,7 +272,8 @@ async def _pair_once(address: str, passkey: Optional[str],
         async def RequestPasskey(self, device: "o") -> "u":
             _trace("BlueZ -> RequestPasskey")
             if self._passkey is None:
-                self._passkey = await _ask("passkey shown on device: ")
+                self._passkey = await _ask("passkey shown on device: ",
+                                           self._pending)
             _trace(f"sending passkey {self._passkey:06d}")
             return self._passkey
 
@@ -229,6 +289,7 @@ async def _pair_once(address: str, passkey: Optional[str],
         @method()
         def Cancel(self):
             _trace("agent Cancel() -- BlueZ aborted this pairing attempt")
+            self._abort_prompt()
 
     agent_path = "/org/bluez/glucobridge_agent"
     dev_path = f"/org/bluez/{adapter}/dev_{address.replace(':', '_')}"
@@ -319,6 +380,10 @@ async def _pair_once(address: str, passkey: Optional[str],
             _trace("device marked trusted")
         _trace("paired")
     finally:
+        # settle any still-open passkey prompt BEFORE detaching, so the
+        # D-Bus error reply goes out over a live socket (see _abort_prompt)
+        iface._abort_prompt()
+        await asyncio.sleep(0.1)
         try:
             await agent_mgr.call_unregister_agent(agent_path)
         except Exception:
