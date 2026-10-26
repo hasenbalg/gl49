@@ -54,7 +54,7 @@ def test_parse_device_id():
 
 # ---------------------------------------------------------------- records
 LIVE_RECORDS = [
-    ("5a35352ec288", (2026, 10, 26, 14, 53, 194), "after"),   # apple-tagged
+    ("5a35352ec288", (2026, 10, 26, 14, 53, 194), "preprandial"),  # apple once
     ("55350a167990", (2026, 10, 21, 22, 10, 121), None),
     ("55351308a080", (2026, 10, 21, 8, 19, 160), None),
     ("543500077a80", (2026, 10, 20, 7, 0, 122), None),
@@ -77,7 +77,8 @@ def test_meal_marks():
     # mark bits = swapped r2 >> 5; craft hour 10 + mark m: r2 = 10 | (m<<5)
     # wire order: swapped [r0,r1,r2,r3,r4,r5] -> wire [r1,r0,r3,r2,r5,r4]
     r0, r1, r3, r4, r5 = 0x34, 0x45, 0x0B, 0x00, 0x50   # 2026-02-05 10:11
-    for mark, want in ((0, None), (1, "after"), (2, "before"), (3, "QC")):
+    for mark, want in ((0, None), (1, "preprandial"), (2, "postprandial"),
+                       (3, "general")):
         r2 = 10 | (mark << 5)     # hour 10
         wire = bytes([r1, r0, r3, r2, r5, r4])
         r = parse_record(wire)

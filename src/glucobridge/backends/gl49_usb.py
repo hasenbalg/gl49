@@ -33,8 +33,8 @@ word, then the fields are read off the swapped bytes ``r0..r5``::
     day    = r1 & 0x1F
     hour   = r2 & 0x1F
     minute = r3 & 0x3F
-    meal   = r2 >> 5   (0 none, 1 after meal [apple button, live-confirmed],
-                        2 before meal [inferred], 3 QC [inferred])
+    meal   = r2 >> 5   (0 none, 1 before meal [preprandial],
+                        2 after meal [postprandial], 3 general marking)
 
 ``r3>>6`` and ``r4>>2`` are ignored by the vendor app (``r4>>2`` tracks
 ambient warmth over the day, possibly temp+10 degC, left unlabeled).
@@ -62,9 +62,13 @@ BAUD = 19200
 
 MODEL_BY_CODE = {0x4149: "FORA TD4149 (Beurer GL 49)"}
 
-# meal mark = swapped r2 >> 5; 1 confirmed live = apple button = AFTER meal
-# (vendor symbol), 2 inferred = before meal (untested), 3 = QC
-MEAL_BY_MARK = {0: None, 1: "after", 2: "before", 3: "QC"}
+# meal mark = swapped r2 >> 5. Manual §5.3: the mark key cycles
+# once = before meal, twice = after meal, thrice = general, 4th = clears.
+# Matches the SIG glucose-context MEALS order (1=preprandial,
+# 2=postprandial) and the GL49 BLE context (apple once -> code 1), so
+# USB and BLE report the same string for the same reading. Mark 3 is
+# Beurer's "general" marker (the SIG calls that code fasting).
+MEAL_BY_MARK = {0: None, 1: "preprandial", 2: "postprandial", 3: "general"}
 
 
 class UsbError(RuntimeError):
@@ -109,7 +113,7 @@ def parse_device_id(r: bytes) -> dict:
 def parse_record(rec: bytes) -> Optional[Reading]:
     """One 6-byte wire record -> Reading, or None if blank/invalid.
 
-    Meal mark (apple button = after meal) decodes from swapped r2 >> 5.
+    Meal mark (apple button cycles before/after/general) decodes from swapped r2 >> 5.
     """
     if len(rec) != 6 or rec == b"\x00" * 6:
         return None
