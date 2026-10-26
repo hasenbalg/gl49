@@ -217,8 +217,15 @@ set as the GlucoCheck Advance, at a different speed:
   bytes `r0..r5`: `value = r5 | ((r4 & 3) << 8)`, `year = 2000 + (r0 >> 1)`,
   `month = (r1 >> 5) | ((r0 & 1) << 3)` (1 = January), `day = r1 & 0x1F`,
   `hour = r2 & 0x1F`, `minute = r3 & 0x3F`, `meal mark = r2 >> 5`
-  (0 none, 1 after meal [apple button, live-confirmed], 2 before meal
-  [inferred], 3 QC [inferred]).
+  (0 none, 1 preprandial/before meal, 2 postprandial/after meal,
+  3 general marking). Manual §5.3: the mark key CYCLES — once = before
+  meal, twice = after, thrice = general, 4th press clears; marking is
+  only possible while the result is on screen, stored on power-off.
+  Ordering equals the SIG glucose-context meal table (1=preprandial,
+  2=postprandial), confirmed live via the GL49's own BLE context for
+  the same record (single apple press -> USB mark 1 -> BLE context
+  meal code 1). An earlier revision mapped 1=after on a misremembered
+  button meaning — wrong, reverted.)
   `r3>>6` and `r4>>2` are ignored by the vendor app (`r4>>2` drifts with
   ambient warmth over the day — possibly temp+10 degC, unconfirmed);
 * enumeration quirks: only enumerates on some ports (marginal
@@ -229,8 +236,27 @@ set as the GlucoCheck Advance, at a different speed:
 `tools/gl49_probe.py` speaks this protocol (24/29/2B/85/27/28 frames at
 19200, then 9600).
 
+## GL49 BLE (live-verified 2026-10-26)
+* Advertises as `GL49` (no space); real Glucose Service `0x1808`
+  (0x2A18/0x2A34/0x2A51/0x2A52 + CCCDs), battery, device info, plus a
+  Nordic UART decoy `0x1523` (same as GlucoCheck). Standard RACP
+  `report stored records` download works — all records match the USB
+  transport to the minute.
+* Pairing = passkey entry, code generated per attempt: use the
+  interactive prompt (a pre-passed `--passkey` is always stale).
+  MUST be a clean single-agent session: `pkill bluetoothctl` first —
+  a competing/stale default agent steals `RequestPasskey` and the
+  attempt dies as misleading `Authentication Canceled`/
+  `AuthenticationFailed`. One `pair` attempt at a time (overlap ->
+  `InProgress` + confirm failure). Meter shows `PA` in pairing mode,
+  `nOK` on reject. After bonding, all tools connect agent-free.
+* Marked readings carry a context record (measurement flags `0x12`
+  vs `0x02` unmarked); context meal code order equals the SIG table —
+  the single apple press tags `preprandial` on both transports.
+
 ## Open items
-* Live-test the GL49 and Accu-Chek Guide radios
+* Live-test the Accu-Chek Guide radio
   (GlucoCheck Advance + Ultra Plus Reflect BLE + USB: done 2026-10-21;
-  GL49 USB: done 2026-10-22 — `gl49_usb` backend, live-verified).
+  GL49 USB: done 2026-10-22 — `gl49_usb` backend, live-verified;
+  GL49 BLE: done 2026-10-26 — pairing + `gls` backend, live-verified).
 * Optional: Home Assistant / MQTT bridge on top of `watch()`.
