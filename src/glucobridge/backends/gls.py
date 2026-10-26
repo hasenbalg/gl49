@@ -60,6 +60,37 @@ class GlucoseMeter:
         return bool(self._client and self._client.is_connected)
 
     # ------------------------------------------------------------- internals
+    @staticmethod
+    def _norm_uuid(u: str) -> str:
+        h = u.replace("-", "").lower()
+        if len(h) == 4:  # 16-bit short form -> base UUID
+            h = "0000" + h + "00001000800000805f9b34fb"
+        return h
+
+    def _char(self, uuid: str):
+        """Resolve a characteristic object, preferring the Glucose Service.
+
+        Some meters (live-observed on Accu-Chek Guide) expose the same
+        characteristic UUID under more than one service; bleak then rejects
+        bare UUID strings with "Multiple Characteristics with this UUID".
+        Passing the characteristic object from the standard Glucose Service
+        (0x1808) keeps the standard profile authoritative.
+        """
+        c = self._require()
+        want = self._norm_uuid(uuid)
+        want_svc = self._norm_uuid(gatt.GLUCOSE_SERVICE)
+        fallback = None
+        for svc in c.services:
+            for ch in svc.characteristics:
+                if self._norm_uuid(ch.uuid) != want:
+                    continue
+                if self._norm_uuid(svc.uuid) == want_svc:
+                    return ch
+                fallback = fallback or ch
+        if fallback is not None:
+            return fallback
+        raise KeyError(uuid)
+
     def _require(self):
         if not self.connected:
             raise RuntimeError("not connected — call connect() first")
@@ -105,12 +136,15 @@ class GlucoseMeter:
 
     async def _subscribe_all(self):
         c = self._require()
-        await c.start_notify(gatt.GLUCOSE_MEASUREMENT, self._on_measurement)
+        await c.start_notify(self._char(gatt.GLUCOSE_MEASUREMENT),
+                             self._on_measurement)
         try:
-            await c.start_notify(gatt.GLUCOSE_MEASUREMENT_CONTEXT, self._on_context)
+            await c.start_notify(self._char(gatt.GLUCOSE_MEASUREMENT_CONTEXT),
+                                 self._on_context)
         except Exception as e:  # context char is optional in practice
             log.debug("no context characteristic notifications: %s", e)
-        await c.start_notify(gatt.RECORD_ACCESS_CONTROL_POINT, self._on_racp)
+        await c.start_notify(self._char(gatt.RECORD_ACCESS_CONTROL_POINT),
+                             self._on_racp)
 
     # ---------------------------------------------------------------- public
     async def record_count(self) -> Optional[int]:
@@ -120,7 +154,7 @@ class GlucoseMeter:
         self._racp_done = asyncio.Event()
         self._num_stored = None
         try:
-            await c.write_gatt_char(gatt.RECORD_ACCESS_CONTROL_POINT,
+            await c.write_gatt_char(self._char(gatt.RECORD_ACCESS_CONTROL_POINT),
                                     racp.report_num_stored_all(),
                                     response=True)
             try:
@@ -142,7 +176,7 @@ class GlucoseMeter:
 
         self._racp_done = asyncio.Event()
         try:
-            await c.write_gatt_char(gatt.RECORD_ACCESS_CONTROL_POINT,
+            await c.write_gatt_char(self._char(gatt.RECORD_ACCESS_CONTROL_POINT),
                                     racp.report_stored_all(),
                                     response=True)
             try:
@@ -190,7 +224,7 @@ class GlucoseMeter:
                           (gatt.MODEL_NUMBER, "model"),
                           (gatt.FIRMWARE_REVISION, "firmware")):
             try:
-                v = await c.read_gatt_char(uuid)
+                v = await c.read_gatt_char(self._char(uuid))
                 info[key] = v.decode("utf-8", "replace")
             except Exception:
                 pass

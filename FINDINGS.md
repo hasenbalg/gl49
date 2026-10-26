@@ -254,6 +254,30 @@ set as the GlucoCheck Advance, at a different speed:
   vs `0x02` unmarked); context meal code order equals the SIG table —
   the single apple press tags `preprandial` on both transports.
 
+## Live test round 2 (2026-10-26, Raspberry Pi host `bt-test`)
+
+- **Library pairing works end-to-end on GL49**: `glucobridge pair` (our own
+  BlueZ agent, KeyboardDisplay) → `RequestPasskey` → passkey typed →
+  bonded + trusted in ~11 s. Two earlier attempts died `Page Timeout`
+  because the meter was not in/connectable from its pairing window —
+  that error simply means "wake the meter, retry immediately".
+- **Accu-Chek Guide seen live for the first time** (`meter+49080084`,
+  `A0:D9:1A:60:5D:EE`): paired via library passkey agent fine, but the
+  first `dump` hit `Multiple Characteristics with this UUID` — the Guide
+  exposes duplicate characteristic UUIDs across services. Fixed by
+  resolving every lookup through `GlucoseMeter._char()`, which prefers
+  the standard Glucose Service (0x1808) and passes the characteristic
+  object (handle-pinned) to bleak instead of a bare UUID.
+- **GlucoCheck Advance answers standard GLS/RACP**: paired Just Works
+  (no agent interaction) and `dump --backend gls` returned 6 readings —
+  the proprietary `fora` backend is a fallback, not the only path.
+  (Its RTC was at 2026-01 defaults; values match earlier live runs.)
+- Gotcha on fresh hosts: Raspberry Pi Bluetooth ships soft-blocked —
+  `rfkill list` / `rfkill unblock bluetooth` before anything else.
+- Transient `Device with address ... was not found` immediately after
+  pairing = meter stepped out of range of BlueZ's cache between calls;
+  a plain retry works.
+
 ## Open items
 * Live-test the Accu-Chek Guide radio
   (GlucoCheck Advance + Ultra Plus Reflect BLE + USB: done 2026-10-21;

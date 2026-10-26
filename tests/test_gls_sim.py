@@ -5,6 +5,7 @@ it streams two measurements, one context record, then the success response.
 """
 import asyncio
 import struct
+from types import SimpleNamespace
 
 import pytest
 
@@ -31,16 +32,26 @@ SF_98 = 0x0062
 SF_141 = 0x008D
 
 
+class _Svc:
+    def __init__(self, uuid, char_uuids):
+        self.uuid = uuid
+        self.characteristics = [SimpleNamespace(uuid=u, handle=i)
+                                for i, u in enumerate(char_uuids)]
+
+
 class FakeClient:
     def __init__(self):
         self.is_connected = True
         self._cbs = {}
+        self.services = [_Svc(gatt.GLUCOSE_SERVICE, [
+            gatt.GLUCOSE_MEASUREMENT, gatt.GLUCOSE_MEASUREMENT_CONTEXT,
+            gatt.RECORD_ACCESS_CONTROL_POINT])]
 
-    async def start_notify(self, uuid, cb):
-        self._cbs[uuid.lower()] = cb
+    async def start_notify(self, char, cb):
+        self._cbs[char.uuid.lower()] = cb
 
-    async def write_gatt_char(self, uuid, data, response=False):
-        assert uuid == gatt.RECORD_ACCESS_CONTROL_POINT
+    async def write_gatt_char(self, char, data, response=False):
+        assert char.uuid == gatt.RECORD_ACCESS_CONTROL_POINT
         assert bytes(data) == racp.report_stored_all()
         notify = self._cbs[gatt.GLUCOSE_MEASUREMENT.lower()]
         ctx = self._cbs[gatt.GLUCOSE_MEASUREMENT_CONTEXT.lower()]
