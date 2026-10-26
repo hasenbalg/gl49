@@ -329,10 +329,14 @@ Per meter:
   Like the FORA meters they never push: `watch` polls the record
   counter.
 * **TESTAmed GlucoCheck Advance** — Just Works pairing: `pair`
-  completes with no prompt (live-verified).  It also exposes a Nordic
-  UART service (00001523-…) which is *not* used for glucose data.  Its
-  firmware reports the concentration in the formal GSS SI unit (kg/L),
-  which the library converts to mg/dL automatically.
+  completes with no prompt (live-verified).  **After pairing it needs
+  a power-cycle before the first `dump` works** — until rebooted the
+  meter accepts the bond but won't serve GATT (the dump just hangs).
+  Unusual, but only once; every later dump is unattended.  It also
+  exposes a Nordic UART service (00001523-…) which is *not* used for
+  glucose data.  Its firmware reports the concentration in the formal
+  GSS SI unit (kg/L), which the library converts to mg/dL
+  automatically.
 * **iFORA meters** — no pairing needed; the FORA backend connects
   directly (service FFF0).  They never push live data, so `watch` polls
   the record count.
