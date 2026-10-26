@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import fnmatch
+import logging
 from dataclasses import dataclass, field
 from typing import Optional, Union
 
@@ -13,6 +14,15 @@ from . import gatt
 from .backends.gls import GlucoseMeter
 from .backends.fora import ForaMeter
 from .backends.verio import VerioMeter
+
+log = logging.getLogger("glucobridge.client")
+
+
+async def _quiet_disconnect(meter) -> None:
+    try:
+        await meter.disconnect()
+    except Exception:
+        pass
 
 # name patterns -> backend.  Matched case-insensitively against the BLE
 # advertisement name.
@@ -218,13 +228,55 @@ class GlucoBridge:
             pass
         return None
 
+    async def try_backends(self, target, backend: Optional[str], fn):
+        """Run fn(meter) on a fresh connection, auto-selecting the backend.
+
+        With an explicit `backend`, exactly one attempt.  Otherwise start
+        from the classified backend and, if the connection or the
+        operation fails, fall through to the remaining backends: meters
+        like the Reflect family ship a DEAD Glucose Service as a decoy
+        that connects fine and only fails once you use it (e.g. RACP
+        write -> GATT error 14 "Unlikely Error").  Raises the first
+        error if every backend fails.
+        """
+        if backend:
+            meter = await self.connect(target, backend=backend)
+            try:
+                return await fn(meter)
+            finally:
+                await _quiet_disconnect(meter)
+
+        order: list[str] = []
+        if isinstance(target, str):
+            b = await self._resolve_backend(target)
+            if b and b != "unknown":
+                order.append(b)
+        order += [b for b in ("gls", "fora", "verio") if b not in order]
+
+        first: Optional[Exception] = None
+        for b in order:
+            try:
+                meter = await self.connect(target, backend=b)
+            except Exception as e:
+                first = first or e
+                continue
+            try:
+                result = await fn(meter)
+                log.debug("backend %s succeeded", b)
+                return result
+            except Exception as e:
+                first = first or e
+                log.info("backend %s failed (%s); trying next", b, e)
+            finally:
+                await _quiet_disconnect(meter)
+        assert first is not None
+        raise first
+
     async def download(self, target, timeout: float = 60.0,
                        backend: Optional[str] = None):
-        meter = await self.connect(target, backend=backend)
-        try:
+        async def fn(meter):
             return await meter.download(timeout=timeout)
-        finally:
-            await meter.disconnect()
+        return await self.try_backends(target, backend, fn)
 
     async def close(self):
         if self._meter:

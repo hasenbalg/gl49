@@ -64,11 +64,13 @@ async def cmd_pair(args):
 
 async def _with_meter(args, coro):
     async with GlucoBridge() as gb:
-        meter = await gb.connect(args.address, backend=getattr(args, "backend", None))
-        try:
-            return await coro(meter)
-        finally:
-            await meter.disconnect()
+        async def run(meter):
+            try:
+                return await coro(meter)
+            finally:
+                await meter.disconnect()
+        return await gb.try_backends(args.address,
+                                     getattr(args, "backend", None), run)
 
 
 async def cmd_dump(args):
