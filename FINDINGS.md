@@ -280,6 +280,37 @@ set as the GlucoCheck Advance, at a different speed:
   pairing = meter stepped out of range of BlueZ's cache between calls;
   a plain retry works.
 
+## Accu-Chek Guide over USB (live-verified 2026-10-26)
+
+- Enumerates `173a:21d5` ("Roche ACCU-CHEK Guide", product 929; siblings
+  `21d7`/`21d8` per field reports), vendor-specific class — NOT CDC, NOT
+  MSC (`lsblk` stays empty). Two bulk endpoints; host must claim the
+  interface as root.
+- Protocol is IEEE 11073-20601 "optimized exchange" over the bulk pipe:
+  the **device sends the pairing request first** (only while its LCD says
+  "Transferring data" — re-enter that screen if it timed out; it shows
+  "Data transfer completed" when the session releases cleanly).
+  Association-response names proto id 20601; then config report ->
+  accepted, MDS get, `SEG_GET_INFO`, `SEG_TRIG_XFER`, then the PM-store
+  segment stream, each segment ACKed, finally association-release.
+  All big-endian; every PDU verified live.
+- Config report object list starts at offset **28** (count u16 @24, then
+  a reserved u16) — off-by-2 desyncs the object walk. PM-store is the
+  object with class 61; its handle drives the action APDUs.
+- Sample records: 12-byte stride, first 6 bytes are the date-time as
+  "BCD-in-hex" per byte (`0x26` -> 26): CC YY MM DD hh mm, century-style
+  year (`20*100+YY`); value = be16 at +8 (meter's display unit), status
+  = be16 at +10 (0 normal, else an E-x error slot — surfaced as
+  `status_0xNNNN`). No meal/meal-time info in USB records: the meal
+  tags seen over BLE (GSS context) do not exist on this transport.
+- Time-set action (0x0C17) exists in the protocol; deliberately not
+  implemented — the backend is read-only against a medical device.
+- pyusb pitfalls hit live: iterating an `Interface` yields `Endpoint`
+  objects directly (not alt-settings), and the alt-setting call is
+  `Device.set_interface_altsetting` (one word, kwargs).
+- Cross-check: identical timestamp+value for the same measurement over
+  BLE and USB (`2026-10-26 17:36 97 mg/dL`).
+
 ## Open items
 * Live-test the Accu-Chek Guide radio
   (GlucoCheck Advance + Ultra Plus Reflect BLE + USB: done 2026-10-21;

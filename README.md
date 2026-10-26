@@ -12,6 +12,7 @@ Read blood glucose meters over Bluetooth LE and USB — no vendor cloud, no vend
 | Beurer GL 49 (FORA TD4149 rebrand) | USB, CP2110 HID-UART + FORA frames | `Gl49UsbMeter` | full history, meal tags (`usb-dump --backend gl49`) |
 | Beurer GL 49 (FORA TD4149 rebrand) | BLE, standard Glucose Service (`0x1808`) | `GlucoseMeter` | pairing (passkey), full history, meal context |
 | Accu-Chek Guide | BLE, standard Glucose Service (`0x1808`) | `GlucoseMeter` | pairing (passkey), history download, meal tags (advertises as `meter+<serial>`; exposes duplicate characteristic UUIDs) |
+| Accu-Chek Guide | USB, IEEE 11073-20601 bulk APDUs (`173a:21d5`) | `GuideUsbMeter` | full history download (`usb-dump --backend guide`, needs root; values match BLE exactly, but no meal tags over USB) |
 
 ## Implemented, not yet tested on hardware
 
