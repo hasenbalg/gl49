@@ -275,7 +275,7 @@ Per meter:
 
 * **Beurer GL 49** — enable Bluetooth in the device menu first (SET
   until the BT symbol, toggle on, confirm with SET), then enter the
-  pairing screen (`PA` on the display) immediately before pairing.
+  archive screen by pressing the up button at the top left.
   Outside pairing mode it only advertises while it wants to transfer
   (BT symbol flashing): press the Apple/app key, pull out the test
   strip, call up the memory, or switch it off.  Passkey entry —
