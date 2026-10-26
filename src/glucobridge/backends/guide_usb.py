@@ -195,8 +195,9 @@ class GuideUsbMeter:
                 self._ep_out = ep_out
                 usb.util.claim_interface(dev, self._iface)
                 try:
-                    usb.util.set_interface_alt_setting(
-                        dev, self._iface, self._alt)
+                    dev.set_interface_altsetting(
+                        interface=self._iface,
+                        alternate_setting=self._alt)
                 except usb.core.USBError:
                     pass
                 break
