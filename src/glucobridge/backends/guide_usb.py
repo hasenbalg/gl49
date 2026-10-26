@@ -256,15 +256,20 @@ class GuideUsbMeter:
 
     def _pmstore_handle(self, cfgbuf: bytes) -> int:
         r = _Reader(cfgbuf, 24)
-        count = r.u16()
-        for _ in range(count):
-            obj_class = r.u16()
-            handle = r.u16()
-            r.u16()          # attribute count
-            size = r.u16()
-            if obj_class == MDC_PMSTORE:
-                return handle
-            r.o += size
+        try:
+            count = r.u16()
+            r.u16()          # reserved (matches reference: dummy u16)
+            for _ in range(count):
+                obj_class = r.u16()
+                handle = r.u16()
+                r.u16()      # attribute count
+                size = r.u16()   # attribute length in octets
+                if obj_class == MDC_PMSTORE:
+                    return handle
+                r.o += size
+        except struct.error:
+            raise UsbError("malformed config report (walk ran past end)") \
+                from None
         raise UsbError("no PM segment store in config report")
 
     def download(self) -> list[Reading]:

@@ -34,7 +34,9 @@ def test_parse_sample_error_status():
 def _cfg_report(invoke=1, handle=9):
     hdr = bytearray(24)
     hdr[6:8] = struct.pack(">H", invoke)
-    objs = struct.pack(">HHHH", 1, G.MDC_PMSTORE, 0, 0) + bytes(8)
+    # count, reserved, then the object: class, handle, attrcount, attroctets
+    objs = struct.pack(">HH", 1, 0)
+    objs += struct.pack(">HHHH", G.MDC_PMSTORE, handle, 0, 0) + bytes(8)
     return bytes(hdr) + objs
 
 
