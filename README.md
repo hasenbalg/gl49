@@ -299,6 +299,12 @@ How `glucobridge pair` behaves (all live-learned on these meters):
 * **First pair against a new host:** if the meter was bonded to another
   machine (or a phone app), that bond competes — delete it on the old
   host or power-cycle the meter, and keep phones away during pairing.
+* **Meter also used with a phone app?** Switch the phone's Bluetooth
+  **off** while glucobridge connects.  These meters serve exactly one
+  central; a bonded phone running the vendor app grabs the connection
+  the moment the meter advertises — downloads then fail with busy/
+  timeout errors that look like meter faults but are really a race you
+  can win by simply turning the phone's Bluetooth off.
 * **Raspberry Pi hosts** ship Bluetooth soft-blocked out of the box:
   `rfkill unblock bluetooth` before anything else (`rfkill list` proves
   it).
