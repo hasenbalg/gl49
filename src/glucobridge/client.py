@@ -17,7 +17,8 @@ from .backends.verio import VerioMeter
 # name patterns -> backend.  Matched case-insensitively against the BLE
 # advertisement name.
 NAME_PATTERNS = [
-    ("gl?4[5-9]", "gls"),            # Beurer GL 45/46/48/49
+    ("gl?4[5-9]*", "gls"),           # Beurer GL 45/46/48/49 (spaced)
+    ("gl4[5-9]*", "gls"),            # GL49 advertises WITHOUT space (live)
     ("beurer*", "gls"),
     ("acu?chek?guide*", "gls"),      # Accu-Chek Guide / Guide Me
     ("acucheck*", "gls"),
