@@ -4,16 +4,26 @@ Read blood glucose meters over Bluetooth LE and USB — no vendor cloud, no vend
 
 ## Tested on real hardware
 
-| Meter | Transport | Backend class | Verified |
-|---|---|---|---|
-| TESTAmed GlucoCheck Advance (fw V1.2.29) | BLE, standard Glucose Service (`0x1808`) | `GlucoseMeter` | full history download |
-| TESTAmed GlucoCheck Advance (TaiDoc TD-4288) | USB, CP2110 HID-UART + TaiDoc frames | `Td42xxUsbMeter` | full history, model/clock (`usb-dump --backend glucocheck`, needs root; values match BLE exactly) |
-| OneTouch Ultra Plus Reflect (fw SI_04.01.03) | BLE, LifeScan "Verio" protocol (`AF9DF7A1`) | `VerioMeter` | pairing, full history, meal tags, error slots |
-| OneTouch Ultra Plus Reflect | USB, LifeScan MSC SCSI registers | `LifeScanUSBMeter` | full history, meal tags (`usb-dump`) |
-| Beurer GL 49 (FORA TD4149 rebrand) | BLE, standard Glucose Service (`0x1808`) | `GlucoseMeter` | pairing (passkey), full history, meal tags |
-| Beurer GL 49 (FORA TD4149 rebrand) | USB, CP2110 HID-UART + FORA frames | `Gl49UsbMeter` | full history, meal tags (`usb-dump --backend gl49`) |
-| Accu-Chek Guide | BLE, standard Glucose Service (`0x1808`) | `GlucoseMeter` | pairing (passkey), history download, meal tags (advertises as `meter+<serial>`; exposes duplicate characteristic UUIDs) |
-| Accu-Chek Guide | USB, IEEE 11073-20601 bulk APDUs (`173a:21d5`) | `GuideUsbMeter` | full history download (`usb-dump --backend guide`, needs root; values match BLE exactly, but no meal tags over USB) |
+All four meters are verified over **both** transports; for each meter
+the BLE and USB histories match each other reading-for-reading.
+`usb-dump` needs root.
+
+| Meter | BLE — `dump` | USB — `usb-dump` |
+|---|---|---|
+| **Beurer GL 49** (FORA TD4149 rebrand) | full history, meal tags, passkey pairing | `--backend gl49`: full history, meal tags |
+| **Accu-Chek Guide** | full history, meal tags, passkey pairing; advertises as `meter+<serial>` | `--backend guide`: full history (no meal tags over USB) |
+| **TESTAmed GlucoCheck Advance** | full history | `--backend glucocheck`: full history, model & meter clock |
+| **OneTouch Ultra Plus Reflect** | full history, meal tags, error slots | default backend: full history, meal tags |
+
+Backend classes: `dump` uses `GlucoseMeter` (standard Glucose Service)
+for the first three meters and `VerioMeter` for the Reflect, picked
+automatically; the USB `--backend` values map to `LifeScanUSBMeter`
+(`lifescan`, default), `Gl49UsbMeter` (`gl49`), `Td42xxUsbMeter`
+(`glucocheck`) and `GuideUsbMeter` (`guide`) — all importable from
+`glucobridge` directly.
+
+Firmware of the tested units: GlucoCheck V1.2.29 (a TaiDoc TD-4288),
+Reflect SI_04.01.03.
 
 ## Implemented, not yet tested on hardware
 
