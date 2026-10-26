@@ -9,7 +9,7 @@ def uuid16(u: int) -> str:
 
 
 # Services
-GLUCOSE_SERVICE = uuid16(0x181F)
+GLUCOSE_SERVICE = uuid16(0x1808)   # Glucose SERVICE (0x181F is the Profile)
 DEVICE_INFO_SERVICE = uuid16(0x180A)
 CURRENT_TIME_SERVICE = uuid16(0x1805)
 

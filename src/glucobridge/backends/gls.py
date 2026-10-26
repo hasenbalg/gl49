@@ -1,5 +1,5 @@
 """Backend for meters implementing the standard Bluetooth Glucose Service
-(0x181F): Beurer GL 49, Accu-Chek Guide, and other GLS-certified meters."""
+(0x1808): Beurer GL 49, Accu-Chek Guide, and other GLS-certified meters."""
 from __future__ import annotations
 
 import asyncio

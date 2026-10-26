@@ -29,7 +29,7 @@ context records, CSV/JSON export.
 ## Protocol findings
 
 ### Beurer GL 49 — standard Bluetooth Glucose Service (confirmed)
-* BLE GATT service 0x181F; records on 0x2A18 (notify), context on 0x2A34,
+* BLE GATT service 0x1808; records on 0x2A18 (notify), context on 0x2A34,
   history via Record Access Control Point 0x2A52.
 * Third-party apps (Glooko, HealthManager Pro) read it over BLE — the
   interface is not Beurer-locked.
