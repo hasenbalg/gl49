@@ -268,6 +268,8 @@ set as the GlucoCheck Advance, at a different speed:
   resolving every lookup through `GlucoseMeter._char()`, which prefers
   the standard Glucose Service (0x1808) and passes the characteristic
   object (handle-pinned) to bleak instead of a bare UUID.
+  **Fix confirmed live**: bare `dump` afterwards returned readings with
+  meal tags (`97 mg/dL [preprandial]`).
 - **GlucoCheck Advance answers standard GLS/RACP**: paired Just Works
   (no agent interaction) and `dump --backend gls` returned 6 readings —
   the proprietary `fora` backend is a fallback, not the only path.
@@ -282,5 +284,7 @@ set as the GlucoCheck Advance, at a different speed:
 * Live-test the Accu-Chek Guide radio
   (GlucoCheck Advance + Ultra Plus Reflect BLE + USB: done 2026-10-21;
   GL49 USB: done 2026-10-22 — `gl49_usb` backend, live-verified;
-  GL49 BLE: done 2026-10-26 — pairing + `gls` backend, live-verified).
+  GL49 BLE: done 2026-10-26 — pairing + `gls` backend, live-verified;
+  Accu-Chek Guide BLE: done 2026-10-26 — pairing + download after the
+  duplicate-characteristic fix).
 * Optional: Home Assistant / MQTT bridge on top of `watch()`.
