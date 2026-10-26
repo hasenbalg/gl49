@@ -87,16 +87,23 @@ glucobridge watch AA:BB:CC:DD:EE:FF   # live readings (push-capable meters;
                                       # poll-based backends poll automatically)
 glucobridge info AA:BB:CC:DD:EE:FF    # GATT dump + device info (diagnostics)
 glucobridge usb-dump                  # LifeScan meters over USB (keep the
-                                      # LIFESCAN volume mounted; needs root)
-glucobridge usb-dump --backend gl49   # Beurer GL49 over USB: switch the
+                                      # LIFESCAN volume mounted; needs sudo)
+sudo glucobridge usb-dump --backend gl49  # Beurer GL49 over USB: switch the
                                       # meter OFF, plug the cable, wait for
-                                      # the USB symbol (needs root, hidapi)
-glucobridge usb-dump --backend glucocheck  # TaiDoc TD-42xx meters (CP2110,
-                                      # same plug-in dance as the GL49)
-glucobridge usb-dump --backend guide  # Accu-Chek Guide over USB: start the
-                                      # transfer on the meter so it shows
-                                      # "Transferring data" (needs root, pyusb)
+                                      # the USB symbol (sudo + hidapi)
+sudo glucobridge usb-dump --backend glucocheck  # TaiDoc TD-42xx meters
+                                      # (CP2110, same plug-in dance as GL49)
+sudo glucobridge usb-dump --backend guide  # Accu-Chek Guide over USB: start
+                                      # the transfer on the meter so it shows
+                                      # "Transferring data" (sudo + pyusb)
 ```
+
+Every `usb-dump` invocation needs root for raw USB access — prefix it
+with `sudo`.  If glucobridge lives in a virtualenv, plain `sudo python`
+won't see it; use the venv binary through sudo, e.g.
+`sudo .venv/bin/glucobridge usb-dump` (same for your own scripts:
+`sudo .venv/bin/python my_script.py`).  A udev rule for the device
+nodes is the rootless alternative.
 
 `dump --json` and `--since 2026-10-01` also work.  `dump`/`watch`/`info`
 auto-pick the backend from the advertisement and fall through to the
@@ -130,8 +137,9 @@ exercise, HbA1c) when the meter sends context records.
 ### USB meters (no Bluetooth needed)
 
 All four USB backends are plain synchronous classes (no asyncio) and
-work as context managers. They need root (or a udev rule for the device
-node) and `pip install "glucobridge[usb]"`.
+work as context managers. They need root for raw USB access — run the
+script with `sudo` (see the CLI section for the venv gotcha) — plus
+`pip install "glucobridge[usb]"`.
 
 **Beurer GL 49** — switch the meter OFF, plug the USB cable, the LCD
 shows a USB symbol. The meter leaves transfer mode shortly after
