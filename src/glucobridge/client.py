@@ -92,17 +92,34 @@ async def _cached_devices() -> list[Advertisement]:
         bus.disconnect()
     except Exception:
         return []
+    return _bus_devices_to_advs(objects)
+
+
+def _dbus_val(x):
+    """dbus-fast wraps 'v'-signature fields in Variant objects; unwrap.
+
+    Without this, iterating e.g. org.bluez.Device1.UUIDs raises
+    "'dbus_fast.signature.Variant' object is not iterable" (crashes for
+    any cached device with discovered GATT UUIDs), and str(Variant)
+    corrupts Address/Name into repr garbage.
+    """
+    return x.value if hasattr(x, "value") and hasattr(x, "signature") else x
+
+
+def _bus_devices_to_advs(objects) -> list[Advertisement]:
+    """org.bluez GetManagedObjects payload -> Advertisement list."""
     out = []
     for path, ifaces in objects.items():
         dev = ifaces.get("org.bluez.Device1")
         if not dev:
             continue
-        addr = dev.get("Address")
+        addr = _dbus_val(dev.get("Address"))
         if not addr:
             continue
-        name = dev.get("Name") or dev.get("Alias")
-        uuids = [str(u).lower() for u in (dev.get("UUIDs") or [])]
-        rssi = dev.get("RSSI")
+        name = _dbus_val(dev.get("Name")) or _dbus_val(dev.get("Alias"))
+        uuids = [str(u).lower()
+                 for u in (_dbus_val(dev.get("UUIDs")) or [])]
+        rssi = _dbus_val(dev.get("RSSI"))
         out.append(Advertisement(
             address=str(addr),
             name=str(name) if name else None,

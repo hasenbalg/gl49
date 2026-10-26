@@ -24,3 +24,34 @@ def test_service_hints_when_name_unknown():
     assert classify("xyz", [FORA]) == "fora"
     assert classify("xyz", [VERIO, GSS]) == "verio"      # verio beats decoy
     assert classify("", []) == "unknown"
+
+
+class _Variant:  # mimics dbus_fast.signature.Variant
+    __slots__ = ("signature", "value")
+
+    def __init__(self, signature, value):
+        self.signature = signature
+        self.value = value
+
+
+def test_bus_cache_payload_unwraps_variants():
+    from glucobridge.client import _bus_devices_to_advs
+    objects = {
+        "/org/bluez/hci0/dev_C0_26_DA_31_E6_1D": {
+            "org.bluez.Device1": {
+                "Address": _Variant("s", "C0:26:DA:31:E6:1D"),
+                "Name": _Variant("s", "GL49"),
+                "UUIDs": _Variant("as", ["00001808-0000-1000-8000-00805f9b34fb"]),
+                "RSSI": _Variant("n", -60),
+            },
+        },
+        "/org/bluez/hci0": {"org.bluez.Adapter1": {}},
+    }
+    advs = _bus_devices_to_advs(objects)
+    assert len(advs) == 1
+    a = advs[0]
+    assert a.address == "C0:26:DA:31:E6:1D"     # not Variant repr garbage
+    assert a.name == "GL49"
+    assert a.rssi == -60
+    assert a.has_glucose_service is True
+    assert a.backend == "gls"
