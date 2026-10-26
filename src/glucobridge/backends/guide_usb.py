@@ -158,6 +158,7 @@ class GuideUsbMeter:
         self._ep_in = None
         self._ep_out = None
         self._iface = 0
+        self._alt = 0
         self.id = "usb guide"
 
     # ------------------------------------------------------------ lifecycle
@@ -178,17 +179,25 @@ class GuideUsbMeter:
             pass
         dev.set_configuration()
         cfg = dev.get_active_configuration()
+        # pyusb semantics: iterating a Configuration yields one Interface
+        # object per (interface, alt-setting); iterating an Interface
+        # yields its Endpoint objects directly.
         for intf in cfg:
-            eps = [ep for alt in intf for ep in alt]
+            eps = list(intf)
             ep_in = next((e.bEndpointAddress for e in eps
                           if e.bEndpointAddress & 0x80), None)
             ep_out = next((e.bEndpointAddress for e in eps
                            if not e.bEndpointAddress & 0x80), None)
             if ep_in and ep_out:
                 self._iface = intf.bInterfaceNumber
+                self._alt = intf.bAlternateSetting
                 self._ep_in = ep_in
                 self._ep_out = ep_out
                 usb.util.claim_interface(dev, self._iface)
+                try:
+                    dev.set_interface_alt_setting(self._iface, self._alt)
+                except usb.core.USBError:
+                    pass
                 break
         else:
             raise UsbError("no bulk IN+OUT endpoint pair found")
