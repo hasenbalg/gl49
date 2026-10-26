@@ -86,8 +86,8 @@ glucobridge dump AA:BB:CC:DD:EE:FF --csv readings.csv # full history
 glucobridge watch AA:BB:CC:DD:EE:FF   # live readings (push-capable meters;
                                       # poll-based backends poll automatically)
 glucobridge info AA:BB:CC:DD:EE:FF    # GATT dump + device info (diagnostics)
-glucobridge usb-dump                  # LifeScan meters over USB (keep the
-                                      # LIFESCAN volume mounted; needs sudo)
+sudo glucobridge usb-dump             # LifeScan meters over USB (keep the
+                                      # LIFESCAN volume mounted)
 sudo glucobridge usb-dump --backend gl49  # Beurer GL49 over USB: switch the
                                       # meter OFF, plug the cable, wait for
                                       # the USB symbol (sudo + hidapi)
