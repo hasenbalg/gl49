@@ -56,7 +56,9 @@ async def cmd_pair(args):
     from .pairing import pair
     await pair(args.address, passkey=args.passkey,
                capability="NoDisplayNoKeyboard" if args.just_works
-               else None)
+               else None,
+               timeout=args.timeout, trust=not args.no_trust,
+               renew=args.renew)
     print(f"paired with {args.address}")
 
 
@@ -179,6 +181,12 @@ def main(argv=None) -> int:
     s.add_argument("--passkey", help="6-digit code shown on the meter")
     s.add_argument("--just-works", action="store_true",
                    help="force NoInputNoOutput pairing (no passkey)")
+    s.add_argument("--timeout", type=float, default=120.0,
+                   help="seconds to wait for the handshake (default 120)")
+    s.add_argument("--no-trust", action="store_true",
+                   help="do not mark the device trusted after pairing")
+    s.add_argument("--renew", action="store_true",
+                   help="remove an existing bond and pair from scratch")
     s.set_defaults(fn=cmd_pair)
 
     s = sub.add_parser("dump", help="download stored readings")
