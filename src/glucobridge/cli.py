@@ -121,6 +121,8 @@ async def cmd_usb_dump(args):
         return await _usb_dump_gl49(args)
     if getattr(args, "backend", "lifescan") == "guide":
         return await _usb_dump_guide(args)
+    if getattr(args, "backend", "lifescan") == "glucocheck":
+        return await _usb_dump_glucocheck(args)
     from .backends.lifescan_usb import LifeScanUSBMeter, detect_device
     device = args.device or detect_device()
     if not device:
@@ -189,6 +191,36 @@ async def _usb_dump_guide(args):
     _readings_out(readings, args)
 
 
+async def _usb_dump_glucocheck(args):
+    from .backends.glucocheck_usb import Td42xxUsbMeter
+    from .backends.gl49_usb import SessionLost, UsbError
+    meter = Td42xxUsbMeter()
+    try:
+        await asyncio.to_thread(meter.connect)
+    except UsbError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    try:
+        if not await asyncio.to_thread(meter.wait_for_session, 90.0):
+            print("no session — power the meter on / replug USB "
+                  "while this waits, then retry", file=sys.stderr)
+            return 1
+        try:
+            info = await asyncio.to_thread(meter.device_info)
+        except UsbError:
+            info = {}
+        if not args.json:
+            print(f"# {meter.product}: {info}", file=sys.stderr)
+        readings = await asyncio.to_thread(meter.download)
+    except SessionLost as e:
+        print(f"{e} — replug and retry", file=sys.stderr)
+        return 1
+    finally:
+        meter.close()
+    readings = _filter_since(readings, args.since)
+    _readings_out(readings, args)
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="glucobridge",
                                 description="Read BLE blood glucose meters")
@@ -240,7 +272,8 @@ def main(argv=None) -> int:
     s.add_argument("--device", metavar="/dev/sgN",
                    help="sg/block node (default: auto-detect by vendor; "
                         "LifeScan backend only)")
-    s.add_argument("--backend", choices=["lifescan", "gl49", "guide"],
+    s.add_argument("--backend",
+                   choices=["lifescan", "gl49", "guide", "glucocheck"],
                    default="lifescan")
     s.add_argument("--json", action="store_true")
     s.add_argument("--csv", metavar="FILE")
