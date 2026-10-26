@@ -15,8 +15,8 @@ the capture can be decoded offline.  Run against a live meter:
 Keep the meter powered on; if the line stays silent, replug the cable
 (mirrors the GL49's off->plug->session-window behaviour).
 """
-import time
 import sys
+import time
 
 from glucobridge.backends.gl49_usb import Gl49UsbMeter, UsbError
 

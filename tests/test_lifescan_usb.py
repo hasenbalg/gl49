@@ -4,7 +4,12 @@ import struct
 import pytest
 
 from glucobridge.backends.lifescan_usb import (
-    EPOCH_2000, UsbError, build_packet, parse_packet, parse_record)
+    EPOCH_2000,
+    UsbError,
+    build_packet,
+    parse_packet,
+    parse_record,
+)
 from glucobridge.backends.verio import crc16_ccitt_false
 
 

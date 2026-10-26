@@ -9,7 +9,7 @@ import json
 import logging
 import sys
 
-from .client import GlucoBridge, Advertisement
+from .client import GlucoBridge
 from .models import Reading
 
 
@@ -192,8 +192,8 @@ async def _usb_dump_guide(args):
 
 
 async def _usb_dump_glucocheck(args):
-    from .backends.glucocheck_usb import Td42xxUsbMeter
     from .backends.gl49_usb import SessionLost, UsbError
+    from .backends.glucocheck_usb import Td42xxUsbMeter
     meter = Td42xxUsbMeter()
     try:
         await asyncio.to_thread(meter.connect)

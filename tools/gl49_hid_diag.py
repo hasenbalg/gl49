@@ -27,7 +27,7 @@ BAUDS = [19200, 9600, 115200, 38400, 57600, 4800, 2400]
 def get(h, rid, n=64):
     try:
         return bytes(h.get_feature_report(rid, n))
-    except Exception as e:
+    except Exception:
         return None
 
 
@@ -78,7 +78,6 @@ def poll_mode(h):
 
 
 def main():
-    import sys
     devs = hid.enumerate(VID, PID)
     if not devs:
         sys.exit(f"no CP2110 {VID:04x}:{PID:04x} found (replug; meter OFF first)")

@@ -11,8 +11,8 @@ from bleak.backends.device import BLEDevice
 from bleak.backends.service import BleakGATTServiceCollection  # noqa: F401
 
 from . import gatt
-from .backends.gls import GlucoseMeter
 from .backends.fora import ForaMeter
+from .backends.gls import GlucoseMeter
 from .backends.verio import VerioMeter
 
 log = logging.getLogger("glucobridge.client")
@@ -92,8 +92,8 @@ async def _cached_devices() -> list[Advertisement]:
     in BlueZ's object cache and would otherwise make scans look empty.
     """
     try:
-        from dbus_fast.aio import MessageBus
         from dbus_fast import BusType
+        from dbus_fast.aio import MessageBus
         bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
         intro = await bus.introspect("org.bluez", "/")
         obj = bus.get_proxy_object("org.bluez", "/", intro)

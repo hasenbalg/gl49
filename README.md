@@ -331,6 +331,7 @@ whatever bond BlueZ holds; but keep `bluetoothctl` *exited* afterwards
 ```bash
 .venv/bin/pip install -e '.[dev]'
 .venv/bin/python -m pytest tests/ -q
+.venv/bin/ruff check src tests tools
 ```
 
 The test suite includes spec-derived byte vectors for every protocol

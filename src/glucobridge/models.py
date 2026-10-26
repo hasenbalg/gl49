@@ -3,8 +3,7 @@ from __future__ import annotations
 
 import csv
 import datetime as dt
-import json
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from typing import Optional
 
 MMOL_PER_MGDL = 1 / 18.0182  # glucose molar mass conversion

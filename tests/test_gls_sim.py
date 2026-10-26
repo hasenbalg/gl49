@@ -7,8 +7,6 @@ import asyncio
 import struct
 from types import SimpleNamespace
 
-import pytest
-
 from glucobridge import gatt, racp
 from glucobridge.backends.gls import GlucoseMeter
 from glucobridge.records import parse_glucose_measurement  # noqa: F401

@@ -7,8 +7,14 @@ import pytest
 
 from glucobridge.backends import verio
 from glucobridge.backends.verio import (
-    crc16_ccitt_false, build_request, parse_response, decode_record,
-    VerioMeter, VerioError, TIME_OFFSET, ACK,
+    ACK,
+    TIME_OFFSET,
+    VerioError,
+    VerioMeter,
+    build_request,
+    crc16_ccitt_false,
+    decode_record,
+    parse_response,
 )
 
 

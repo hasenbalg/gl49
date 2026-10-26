@@ -12,8 +12,10 @@ from bleak.backends.device import BLEDevice
 from .. import gatt, racp
 from ..models import Reading
 from ..records import (
-    parse_glucose_measurement, parse_glucose_context, merge_context,
     RecordError,
+    merge_context,
+    parse_glucose_context,
+    parse_glucose_measurement,
 )
 
 log = logging.getLogger("glucobridge.gls")

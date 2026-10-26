@@ -12,7 +12,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from glucobridge.backends.gl49_usb import (  # noqa: E402
-    Gl49UsbMeter, SessionLost, UsbError, frame, parse_record, swap_pairs)
+    Gl49UsbMeter,
+    SessionLost,
+    UsbError,
+    frame,
+    parse_record,
+    swap_pairs,
+)
 
 
 def dump(label, r):

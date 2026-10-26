@@ -9,8 +9,14 @@ import pytest
 
 from glucobridge.backends import fora
 from glucobridge.backends.fora import (
-    frame, checksum_ok, parse_date, encode_time, parse_value,
-    parse_device_id, parse_count, ForaMeter,
+    ForaMeter,
+    checksum_ok,
+    encode_time,
+    frame,
+    parse_count,
+    parse_date,
+    parse_device_id,
+    parse_value,
 )
 
 

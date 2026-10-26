@@ -122,9 +122,9 @@ async def pair(address: str, passkey: Optional[str] = None,
 async def _pair_once(address: str, passkey: Optional[str],
                      adapter: str, timeout: float,
                      capability: str, trust: bool, renew: bool) -> None:
+    from dbus_fast import BusType, Variant
     from dbus_fast.aio import MessageBus
     from dbus_fast.service import ServiceInterface, method
-    from dbus_fast import BusType, Variant
 
     bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
 

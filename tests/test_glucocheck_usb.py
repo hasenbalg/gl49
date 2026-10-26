@@ -5,8 +5,13 @@ import struct
 from datetime import datetime
 
 from glucobridge.backends.glucocheck_usb import (
-    Td42xxUsbMeter, frame4, parse_count, parse_datetime, parse_model,
-    parse_value)
+    Td42xxUsbMeter,
+    frame4,
+    parse_count,
+    parse_datetime,
+    parse_model,
+    parse_value,
+)
 
 
 def test_frame_checksum():

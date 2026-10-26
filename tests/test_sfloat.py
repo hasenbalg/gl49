@@ -1,7 +1,8 @@
 import math
+
 import pytest
 
-from glucobridge.sfloat import decode_sfloat16, encode_sfloat16, SFloatError
+from glucobridge.sfloat import SFloatError, decode_sfloat16, encode_sfloat16
 
 
 def test_basic_positive():

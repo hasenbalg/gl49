@@ -6,8 +6,10 @@ import struct
 import pytest
 
 from glucobridge.records import (
-    parse_glucose_measurement, parse_glucose_context, merge_context,
     RecordError,
+    merge_context,
+    parse_glucose_context,
+    parse_glucose_measurement,
 )
 
 

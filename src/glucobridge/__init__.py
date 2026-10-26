@@ -28,27 +28,29 @@ Quick start::
 
     asyncio.run(main())
 """
-from .client import GlucoBridge, Advertisement, scan, classify
+from . import gatt, racp
+from .backends.fora import ForaMeter
+from .backends.gl49_usb import Gl49UsbMeter
+from .backends.gls import GlucoseMeter
+from .backends.glucocheck_usb import Td42xxUsbMeter
+from .backends.guide_usb import GuideUsbMeter
+from .backends.lifescan_usb import LifeScanUSBMeter
+from .backends.verio import VerioMeter
+from .client import Advertisement, GlucoBridge, classify, scan
 from .models import Reading
 from .pairing import pair
-from .backends.gls import GlucoseMeter
-from .backends.fora import ForaMeter
-from .backends.verio import VerioMeter
-from .backends.lifescan_usb import LifeScanUSBMeter
-from .backends.gl49_usb import Gl49UsbMeter
-from .backends.guide_usb import GuideUsbMeter
-from .backends.glucocheck_usb import Td42xxUsbMeter
 from .records import (
-    parse_glucose_measurement, parse_glucose_context, merge_context,
+    merge_context,
+    parse_glucose_context,
+    parse_glucose_measurement,
 )
-from . import racp, gatt
 from .sfloat import decode_sfloat16, encode_sfloat16
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __all__ = [
     "GlucoBridge", "GlucoseMeter", "Reading", "Advertisement",
     "scan", "classify", "pair", "LifeScanUSBMeter", "Gl49UsbMeter",
-    "GuideUsbMeter", "Td42xxUsbMeter",
+    "GuideUsbMeter", "Td42xxUsbMeter", "VerioMeter", "ForaMeter",
     "parse_glucose_measurement", "parse_glucose_context", "merge_context",
     "racp", "gatt", "decode_sfloat16", "encode_sfloat16", "__version__",
 ]

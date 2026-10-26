@@ -6,8 +6,13 @@ Record fixtures are the live-verified GL49 download of 2026-10-22
 import pytest
 
 from glucobridge.backends.gl49_usb import (
-    frame, swap_pairs, reply_valid, parse_count, parse_device_id,
-    parse_record, UsbError, SessionLost)
+    frame,
+    parse_count,
+    parse_device_id,
+    parse_record,
+    reply_valid,
+    swap_pairs,
+)
 
 
 def _resp(cmd: int, payload: bytes) -> bytes:

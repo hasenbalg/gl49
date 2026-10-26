@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "glucobridge"
-version = "0.2.0"
-description = "Read blood glucose meters over Bluetooth LE (standard Glucose Profile: Beurer GL 49, Accu-Chek Guide; TESTAmed/FORA via proprietary backend)"
+version = "0.3.0"
+description = "Read blood glucose meters over Bluetooth LE and USB — no vendor cloud (Beurer GL 49, Accu-Chek Guide, TESTAmed GlucoCheck, OneTouch Reflect; standard Glucose Service + vendor backends)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio"]
+dev = ["pytest", "pytest-asyncio", "ruff>=0.6"]
 usb = ["hidapi>=0.14",           # GL49 USB (CP2110 HID-UART)
        "pyusb>=1.2"]             # Accu-Chek Guide USB (bulk APDUs)
 
@@ -27,3 +27,16 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 90
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "W", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# The pairing agent annotates its D-Bus methods with raw signature strings
+# ("o", "u", "s", "q") that dbus-fast parses itself and Python never
+# evaluates -- ruff's F821 cannot know that.
+"src/glucobridge/pairing.py" = ["F821"]

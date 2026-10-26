@@ -14,9 +14,13 @@ import struct
 from typing import Optional
 
 from .models import (
-    Reading, SAMPLE_TYPES, SAMPLE_LOCATIONS, MEALS, STATUS_BITS,
+    MEALS,
+    SAMPLE_LOCATIONS,
+    SAMPLE_TYPES,
+    STATUS_BITS,
+    Reading,
 )
-from .sfloat import decode_sfloat16, SFloatError
+from .sfloat import SFloatError, decode_sfloat16
 
 
 class RecordError(ValueError):
