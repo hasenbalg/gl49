@@ -1,4 +1,4 @@
-"""Command-line interface: glucobridge scan|pair|dump|watch|info."""
+"""Command-line interface: glucobridge scan|pair|unpair|dump|watch|info."""
 from __future__ import annotations
 
 import argparse
@@ -60,6 +60,19 @@ async def cmd_pair(args):
                timeout=args.timeout, trust=not args.no_trust,
                renew=args.renew)
     print(f"paired with {args.address}")
+
+
+async def cmd_unpair(args):
+    from .pairing import unpair
+    removed = await unpair(args.address, adapter=args.adapter)
+    if removed:
+        print(f"unpaired {args.address} (host side)")
+        print("the meter still holds its own key: power-cycle it "
+              "(Bluetooth off in its menu, batteries out ~10 s) before "
+              "pairing it again", file=sys.stderr)
+    else:
+        print(f"{args.address} was not paired here -- nothing to do")
+    return 0
 
 
 async def _with_meter(args, coro):
@@ -244,6 +257,12 @@ def main(argv=None) -> int:
     s.add_argument("--renew", action="store_true",
                    help="remove an existing bond and pair from scratch")
     s.set_defaults(fn=cmd_pair)
+
+    s = sub.add_parser("unpair",
+                       help="remove this host's BlueZ bond for a meter")
+    s.add_argument("address")
+    s.add_argument("--adapter", default="hci0")
+    s.set_defaults(fn=cmd_unpair)
 
     s = sub.add_parser("dump", help="download stored readings")
     s.add_argument("address")

@@ -38,7 +38,7 @@ from .backends.lifescan_usb import LifeScanUSBMeter
 from .backends.verio import VerioMeter
 from .client import Advertisement, GlucoBridge, classify, scan
 from .models import Reading
-from .pairing import pair
+from .pairing import pair, unpair
 from .records import (
     merge_context,
     parse_glucose_context,
@@ -49,7 +49,7 @@ from .sfloat import decode_sfloat16, encode_sfloat16
 __version__ = "0.3.0"
 __all__ = [
     "GlucoBridge", "GlucoseMeter", "Reading", "Advertisement",
-    "scan", "classify", "pair", "LifeScanUSBMeter", "Gl49UsbMeter",
+    "scan", "classify", "pair", "unpair", "LifeScanUSBMeter", "Gl49UsbMeter",
     "GuideUsbMeter", "Td42xxUsbMeter", "VerioMeter", "ForaMeter",
     "parse_glucose_measurement", "parse_glucose_context", "merge_context",
     "racp", "gatt", "decode_sfloat16", "encode_sfloat16", "__version__",

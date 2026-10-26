@@ -82,6 +82,8 @@ Linux-only.
 glucobridge scan                      # find meters
 glucobridge pair AA:BB:CC:DD:EE:FF    # answer the on-screen passkey in the
                                       # terminal (pair once; see Pairing notes)
+glucobridge unpair AA:BB:CC:DD:EE:FF  # remove this host's bond (only to move
+                                      # the meter to another machine!)
 glucobridge dump AA:BB:CC:DD:EE:FF --csv readings.csv # full history
 glucobridge watch AA:BB:CC:DD:EE:FF   # live readings (push-capable meters;
                                       # poll-based backends poll automatically)
@@ -283,10 +285,13 @@ How `glucobridge pair` behaves (all live-learned on these meters):
 * **Never unpair one side alone.** These meters have no unpair UI: if
   BlueZ forgets its keys while the meter still holds its half (e.g.
   after `--renew`, or a formatted host), the meter silently ignores
-  fresh pairing attempts.  Recovery: power-cycle the meter hard
-  (Bluetooth off in its menu, then batteries out for ~10 s), and keep
-  `pair` out of your daily workflow entirely — after one successful
-  pairing, `dump` alone is all you need.
+  fresh pairing attempts.  To delete this host's bond deliberately,
+  use `glucobridge unpair <addr>` (library: `await unpair(address)`,
+  idempotent) — and then power-cycle the meter hard (Bluetooth off in
+  its menu, then batteries out for ~10 s) before pairing it anywhere
+  again.  In daily use, keep `pair`/`unpair` out of the workflow
+  entirely — after one successful pairing, `dump` alone is all you
+  need.
 * **First pair against a new host:** if the meter was bonded to another
   machine (or a phone app), that bond competes — delete it on the old
   host or power-cycle the meter, and keep phones away during pairing.

@@ -68,8 +68,8 @@ def _hint(err: Exception) -> str:
     return ""
 
 
-def _trace(msg: str) -> None:
-    print(f"[pair {time.monotonic() % 3600:7.2f}s] {msg}", file=sys.stderr)
+def _trace(msg: str, tag: str = "pair") -> None:
+    print(f"[{tag} {time.monotonic() % 3600:7.2f}s] {msg}", file=sys.stderr)
 
 
 async def _ask(prompt: str) -> int:
@@ -117,6 +117,40 @@ async def pair(address: str, passkey: Optional[str] = None,
             if hint:
                 print(hint, file=sys.stderr)
             raise first from None
+
+
+async def unpair(address: str, adapter: str = "hci0") -> bool:
+    """Remove the BlueZ-side bond for a device (``Device1.Remove()``).
+
+    Returns True if a bond was removed, False if BlueZ had nothing to
+    remove (idempotent).  The METER normally keeps its half of the keys
+    and has no unpair UI, so it must be power-cycled (Bluetooth off in
+    its menu, batteries out ~10 s) before it will accept a fresh
+    pairing -- otherwise it silently ignores pairing attempts.  Only
+    use this to hand the meter to another host; to keep using it here,
+    just leave the bond alone.
+    """
+    from dbus_fast import BusType
+    from dbus_fast.aio import MessageBus
+
+    bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+    try:
+        dev_path = f"/org/bluez/{adapter}/dev_{address.replace(':', '_')}"
+        root_intro = await bus.introspect(BLUEZ_SERVICE, "/")
+        root_obj = bus.get_proxy_object(BLUEZ_SERVICE, "/", root_intro)
+        manager = root_obj.get_interface("org.freedesktop.DBus.ObjectManager")
+        objects = await manager.call_get_managed_objects()
+        if dev_path not in objects or DEVICE_IFACE not in objects[dev_path]:
+            _trace(f"{address} is not known to BlueZ -- nothing to remove",
+                   "unpair")
+            return False
+        dev_intro = await bus.introspect(BLUEZ_SERVICE, dev_path)
+        dev_obj = bus.get_proxy_object(BLUEZ_SERVICE, dev_path, dev_intro)
+        await dev_obj.get_interface(DEVICE_IFACE).call_remove()
+        _trace(f"removed BlueZ bond for {address}", "unpair")
+        return True
+    finally:
+        bus.disconnect()
 
 
 async def _pair_once(address: str, passkey: Optional[str],
