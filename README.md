@@ -286,7 +286,7 @@ Per meter:
 * **Beurer GL 49** — enable Bluetooth in the device menu first (SET
   until the BT symbol, toggle on, confirm with SET), then enter the
   memory screen by pressing the up button at the top left.
-  Outside memory screen it only advertises while it wants to transfer
+  Outside the memory screen it only advertises while it wants to transfer
   (BT symbol flashing): call up the memory screen or switch it off.
   Passkey entry — live-verified with
   `glucobridge pair` itself.
