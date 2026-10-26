@@ -27,18 +27,25 @@ Reflect SI_04.01.03.
 
 ## Implemented, not yet tested on hardware
 
-These share code paths with the verified meters or published specs and are
-covered by simulated-meter unit tests, but no radio/USB capture exists yet:
+These ride the exact code paths of the verified meters (or published
+specs) and are covered by simulated-meter unit tests — they just have
+no live capture of their own yet:
 
-* **Beurer GL 40** — BLE, standard Glucose Service (the GL 49 radio is now
-  tested, see table above)
-* **Accu-Chek Guide Me** — BLE, standard Glucose Service (the Guide is now
-  tested, see table above)
-* **iFORA GH810 / HE211 / TD-Link** — BLE, FORA proprietary protocol (`FFF0`)
-* **Verio Reflect / Verio Flex / Ultra Plus Flex / Select Plus Flex** — BLE,
-  same Verio protocol as the tested Ultra Plus Reflect
-* **Verio 2015 / Select Plus (+Flex)** — USB, same MSC register protocol as
-  the tested Reflect
+* **Beurer GL 40 / Accu-Chek Guide Me** — BLE, standard Glucose
+  Service; same `dump` path as the tested GL 49 and Guide, including
+  the duplicate-characteristic fix.
+* **TaiDoc TD-42xx rebadges** (GlucoRx Nexus, GlucoMen Nexus,
+  GlucoCheck XL, plain TaiDoc units) — BLE via the standard path *and*
+  USB via `--backend glucocheck`; `tools/glucocheck_probe.py`
+  fingerprints any such meter's dialect before you trust it.
+* **OneTouch Verio Flex / Ultra Plus Flex / Select Plus Flex** — BLE,
+  same Verio protocol and `VerioMeter` backend as the tested
+  Ultra Plus Reflect.
+* **OneTouch Verio 2015 / Select Plus (+Flex)** — USB, same MSC
+  register protocol as the tested Reflect (`usb-dump` default).
+* **iFORA GH810 / HE211 / TD-Link** — BLE, FORA proprietary protocol
+  (`FFF0`); the one backend that has never seen any of its own
+  hardware since the rewrite.
 
 The standard path follows the Bluetooth SIG GSS definitions for the Glucose
 Service: records (`0x2A18`), context (`0x2A34`), and the Record Access
