@@ -31,12 +31,34 @@ async def _ask(prompt: str) -> int:
 
 
 async def pair(address: str, passkey: Optional[str] = None,
-               adapter: str = "hci0", timeout: float = 60.0) -> None:
+               adapter: str = "hci0", timeout: float = 60.0,
+               capability: Optional[str] = None) -> None:
     """Pair with a device, answering the passkey prompt with `passkey`.
 
     If the meter shows a 6-digit code, pass it as `passkey`.  If pairing
     uses "just works" confirmation, the agent auto-confirms.
+
+    Without an explicit `capability`, try passkey entry first and fall
+    back to Just Works: FORA-built firmware frequently refuses
+    passkey-entry pairing even while it displays a code.
     """
+    if capability:
+        return await _pair_once(address, passkey, adapter, timeout,
+                                capability)
+    try:
+        return await _pair_once(address, passkey, adapter, timeout,
+                                "KeyboardDisplay")
+    except Exception as first:
+        try:
+            return await _pair_once(address, passkey, adapter, timeout,
+                                    "NoDisplayNoKeyboard")
+        except Exception:
+            raise first from None
+
+
+async def _pair_once(address: str, passkey: Optional[str],
+                     adapter: str, timeout: float,
+                     capability: str) -> None:
     from dbus_fast.aio import MessageBus
     from dbus_fast.service import ServiceInterface, method
     from dbus_fast import BusType
@@ -91,7 +113,7 @@ async def pair(address: str, passkey: Optional[str] = None,
     intro = await bus.introspect(BLUEZ_SERVICE, "/org/bluez")
     bluez = bus.get_proxy_object(BLUEZ_SERVICE, "/org/bluez", intro)
     agent_mgr = bluez.get_interface("org.bluez.AgentManager1")
-    await agent_mgr.call_register_agent(agent_path, "KeyboardDisplay")
+    await agent_mgr.call_register_agent(agent_path, capability)
     await agent_mgr.call_request_default_agent(agent_path)
 
     dev_path = f"/org/bluez/{adapter}/dev_{address.replace(':', '_')}"

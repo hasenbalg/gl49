@@ -14,6 +14,11 @@ from .models import Reading
 
 
 def _readings_out(readings: list[Reading], args) -> None:
+    if not readings and not (args.csv or args.json):
+        print("0 readings.  BLE: verify pairing first "
+              "(bluetoothctl info <addr> | grep Paired); if paired, the "
+              "meter's RACP may be silent -- try `watch` and trigger the "
+              "meter (memory recall / strip eject).", file=sys.stderr)
     if args.csv:
         with open(args.csv, "w", newline="") as f:
             w = csv.writer(f)
@@ -49,7 +54,9 @@ async def cmd_scan(args):
 
 async def cmd_pair(args):
     from .pairing import pair
-    await pair(args.address, passkey=args.passkey)
+    await pair(args.address, passkey=args.passkey,
+               capability="NoDisplayNoKeyboard" if args.just_works
+               else None)
     print(f"paired with {args.address}")
 
 
@@ -170,6 +177,8 @@ def main(argv=None) -> int:
     s = sub.add_parser("pair", help="pair a meter (handles the PIN prompt)")
     s.add_argument("address")
     s.add_argument("--passkey", help="6-digit code shown on the meter")
+    s.add_argument("--just-works", action="store_true",
+                   help="force NoInputNoOutput pairing (no passkey)")
     s.set_defaults(fn=cmd_pair)
 
     s = sub.add_parser("dump", help="download stored readings")
