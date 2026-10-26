@@ -311,6 +311,23 @@ set as the GlucoCheck Advance, at a different speed:
 - Cross-check: identical timestamp+value for the same measurement over
   BLE and USB (`2026-10-26 17:36 97 mg/dL`).
 
+## GlucoCheck Advance over USB — TaiDoc TD-4288 (live-verified 2026-10-26)
+
+- Same `10c4:ea80` CP2110 bridge as the GL49, same 19200 8N1 and
+  `51 CMD m1 m2 m3 m4 A3 CK` frame shape — but the firmware dialect is
+  TaiDoc TD-42xx, not FORA: open with `0x22` connect (valid reply cmds
+  0x22/0x24/0x54), `0x24` model u16le shown in hex (0x4288 = TD-4288),
+  `0x2B` count u16le, and per-record `0x25` datetime + `0x26` value
+  (record 0 = newest). The GL49 dual-fetch `0x85` answers only a stub
+  echo — do not mix the dialects.
+- `0x25` message: day word u16le as bitfield `year:7(+2000)|month:4|
+  day:5`, then minute, hour bytes. `0x26` message: value u16le mg/dL,
+  unknown byte, meal flag (0x40 preprandial / 0x80 postprandial).
+- The meter's never-set RTC (2026-01 defaults) shows identically on
+  both transports — cross-checking BLE vs USB readings works directly.
+- Read-only subset: 0x33 (set datetime) and 0x52 (clear memory) exist
+  and are deliberately unimplemented.
+
 ## Open items
 * Live-test the Accu-Chek Guide radio
   (GlucoCheck Advance + Ultra Plus Reflect BLE + USB: done 2026-10-21;

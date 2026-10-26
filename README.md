@@ -7,6 +7,7 @@ Read blood glucose meters over Bluetooth LE and USB — no vendor cloud, no vend
 | Meter | Transport | Backend class | Verified |
 |---|---|---|---|
 | TESTAmed GlucoCheck Advance (fw V1.2.29) | BLE, standard Glucose Service (`0x1808`) | `GlucoseMeter` | full history download |
+| TESTAmed GlucoCheck Advance (TaiDoc TD-4288) | USB, CP2110 HID-UART + TaiDoc frames | `Td42xxUsbMeter` | full history, model/clock (`usb-dump --backend glucocheck`, needs root; values match BLE exactly) |
 | OneTouch Ultra Plus Reflect (fw SI_04.01.03) | BLE, LifeScan "Verio" protocol (`AF9DF7A1`) | `VerioMeter` | pairing, full history, meal tags, error slots |
 | OneTouch Ultra Plus Reflect | USB, LifeScan MSC SCSI registers | `LifeScanUSBMeter` | full history, meal tags (`usb-dump`) |
 | Beurer GL 49 (FORA TD4149 rebrand) | USB, CP2110 HID-UART + FORA frames | `Gl49UsbMeter` | full history, meal tags (`usb-dump --backend gl49`) |
