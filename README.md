@@ -290,10 +290,12 @@ How `glucobridge pair` behaves (all live-learned on these meters):
   device-side step needed.  The **Accu-Chek Guide** definitively
   does: it keeps its half of the keys, has no unpair UI, and silently
   ignores every fresh pairing attempt until it is power-cycled hard
-  (batteries out ~10 s).  Treat unlisted meters as Guide-like unless
-  proven otherwise.  In daily use, keep `pair`/`unpair` out of the
-  workflow entirely — after one successful pairing, `dump` alone is
-  all you need.
+  (batteries out ~10 s) — so far the only meter that behaves that
+  way.  For anything untested, just try `pair`: if a fresh attempt
+  stalls silently for ~30 s, the meter is holding an old key and a
+  power-cycle is the fix.  In daily use, keep `pair`/`unpair` out of
+  the workflow entirely — after one successful pairing, `dump` alone
+  is all you need.
 * **First pair against a new host:** if the meter was bonded to another
   machine (or a phone app), that bond competes — delete it on the old
   host or power-cycle the meter, and keep phones away during pairing.

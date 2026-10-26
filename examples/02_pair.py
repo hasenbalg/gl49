@@ -49,9 +49,10 @@ async def main() -> None:
     #
     # What the METER does next depends on the model: the GL49, the
     # OneTouch Reflect and the GlucoCheck Advance re-pair straight
-    # away; the Accu-Chek Guide holds on to its key and silently
-    # ignores re-pairing until it is power-cycled (batteries out
-    # ~10 s).  Assume Guide-like behavior for unknown meters.
+    # away.  The Accu-Chek Guide (tested; the only one so far) holds
+    # on to its key and ignores re-pairing until power-cycled
+    # (batteries out ~10 s).  With an untested meter just try pair():
+    # a silent ~30 s stall means it holds an old key -> power-cycle.
     # ------------------------------------------------------------------
 
 

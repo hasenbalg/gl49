@@ -126,12 +126,14 @@ async def unpair(address: str, adapter: str = "hci0") -> bool:
     Returns True if a bond was removed, False if BlueZ had nothing to
     remove (idempotent).  What happens on the METER side afterwards
     differs per model: the Beurer GL49, OneTouch Reflect and TESTAmed
-    GlucoCheck Advance re-pair without any further step, while the
-    Accu-Chek Guide keeps its half of the keys (no unpair UI) and
-    silently ignores fresh pairings until it is hard power-cycled
-    (batteries out ~10 s) -- assume Guide-like behavior unless a
-    meter is known otherwise.  Only use this to hand the meter to
-    another host; to keep using it here, just leave the bond alone.
+    GlucoCheck Advance re-pair without any further step.  Only the
+    Accu-Chek Guide (tested) keeps its half of the keys (no unpair
+    UI) and silently ignores fresh pairings until it is hard
+    power-cycled (batteries out ~10 s).  With an untested meter just
+    try pair() -- if it stalls silently for ~30 s, it is holding an
+    old key and a power-cycle is the fix.  Only use this to hand the
+    meter to another host; to keep using it here, just leave the bond
+    alone.
     """
     from dbus_fast import BusType
     from dbus_fast.aio import MessageBus
