@@ -10,8 +10,8 @@ Read blood glucose meters over Bluetooth LE and USB — no vendor cloud, no vend
 | TESTAmed GlucoCheck Advance (TaiDoc TD-4288) | USB, CP2110 HID-UART + TaiDoc frames | `Td42xxUsbMeter` | full history, model/clock (`usb-dump --backend glucocheck`, needs root; values match BLE exactly) |
 | OneTouch Ultra Plus Reflect (fw SI_04.01.03) | BLE, LifeScan "Verio" protocol (`AF9DF7A1`) | `VerioMeter` | pairing, full history, meal tags, error slots |
 | OneTouch Ultra Plus Reflect | USB, LifeScan MSC SCSI registers | `LifeScanUSBMeter` | full history, meal tags (`usb-dump`) |
+| Beurer GL 49 (FORA TD4149 rebrand) | BLE, standard Glucose Service (`0x1808`) | `GlucoseMeter` | pairing (passkey), full history, meal tags |
 | Beurer GL 49 (FORA TD4149 rebrand) | USB, CP2110 HID-UART + FORA frames | `Gl49UsbMeter` | full history, meal tags (`usb-dump --backend gl49`) |
-| Beurer GL 49 (FORA TD4149 rebrand) | BLE, standard Glucose Service (`0x1808`) | `GlucoseMeter` | pairing (passkey), full history, meal context |
 | Accu-Chek Guide | BLE, standard Glucose Service (`0x1808`) | `GlucoseMeter` | pairing (passkey), history download, meal tags (advertises as `meter+<serial>`; exposes duplicate characteristic UUIDs) |
 | Accu-Chek Guide | USB, IEEE 11073-20601 bulk APDUs (`173a:21d5`) | `GuideUsbMeter` | full history download (`usb-dump --backend guide`, needs root; values match BLE exactly, but no meal tags over USB) |
 
@@ -46,34 +46,45 @@ Requires BlueZ (Linux) with a Bluetooth adapter.
 
 **Dependencies.** The only runtime dependencies are
 [`bleak`](https://github.com/hbbluetoothtools/bleak) (BLE scanning, GATT
-connections, notifications) and its companion
+connections, notifications) and
 [`dbus-fast`](https://github.com/bluetooth-dev-enterprise/python-dbus-fast)
-(pure-Python D-Bus, used only for the BlueZ pairing agent; it ships with
-bleak on Linux anyway). The GL 49 USB backend additionally needs
-[`hidapi`](https://pypi.org/project/hidapi/) — install it with
-`pip install -e ".[usb]"` — and talks to the meter's CP2110 HID-UART
-bridge directly via HID reports, so no serial driver stack is involved.
-Everything else is the standard library. The package targets Python ≥ 3.10
-on Linux: the BlueZ agent paths and the USB port lock use `fcntl`, and
-while the pure-BLE code imports fine on other OSes, pairing and USB are
-Linux-only. Tests run with `pip install -e ".[dev]"` (pytest).
+(pure-Python D-Bus, used only for the BlueZ pairing agent). The USB
+backends additionally need the `[usb]` extra — `pip install -e ".[usb]"`
+— which pulls in `hidapi` (the CP2110-based GL 49 / GlucoCheck backends
+talk to the bridge directly via HID reports, no serial driver stack) and
+`pyusb` (the Accu-Chek Guide backend). Everything else is the standard
+library; the USB libraries are imported lazily, so a BLE-only install
+never touches them. The package targets Python ≥ 3.10 on Linux: the
+BlueZ agent paths and the USB port lock use `fcntl`, and while the
+pure-BLE code imports fine on other OSes, pairing and USB are
+Linux-only.
 
 ## CLI
 
 ```bash
 glucobridge scan                      # find meters
-glucobridge pair AA:BB:CC:DD:EE:FF --passkey 123456   # GL49 shows a 6-digit PIN
+glucobridge pair AA:BB:CC:DD:EE:FF    # answer the on-screen passkey in the
+                                      # terminal (pair once; see Pairing notes)
 glucobridge dump AA:BB:CC:DD:EE:FF --csv readings.csv # full history
-glucobridge watch AA:BB:CC:DD:EE:FF   # live readings (meter pushes on power-off)
+glucobridge watch AA:BB:CC:DD:EE:FF   # live readings (push-capable meters;
+                                      # poll-based backends poll automatically)
 glucobridge info AA:BB:CC:DD:EE:FF    # GATT dump + device info (diagnostics)
 glucobridge usb-dump                  # LifeScan meters over USB (keep the
                                       # LIFESCAN volume mounted; needs root)
 glucobridge usb-dump --backend gl49   # Beurer GL49 over USB: switch the
                                       # meter OFF, plug the cable, wait for
                                       # the USB symbol (needs root, hidapi)
+glucobridge usb-dump --backend glucocheck  # TaiDoc TD-42xx meters (CP2110,
+                                      # same plug-in dance as the GL49)
+glucobridge usb-dump --backend guide  # Accu-Chek Guide over USB: start the
+                                      # transfer on the meter so it shows
+                                      # "Transferring data" (needs root, pyusb)
 ```
 
-`dump --json` and `--since 2026-10-01` also work.
+`dump --json` and `--since 2026-10-01` also work.  `dump`/`watch`/`info`
+auto-pick the backend from the advertisement and fall through to the
+next candidate if one fails mid-handshake; pass `--backend` to force
+one.
 
 ## Library
 
@@ -101,9 +112,9 @@ exercise, HbA1c) when the meter sends context records.
 
 ### USB meters (no Bluetooth needed)
 
-Both USB backends are plain synchronous classes (no asyncio) and work
-as context managers. They need root (or a udev rule for the device
-node) and `pip install "glucobridge[usb]"` for the GL49.
+All four USB backends are plain synchronous classes (no asyncio) and
+work as context managers. They need root (or a udev rule for the device
+node) and `pip install "glucobridge[usb]"`.
 
 **Beurer GL 49** — switch the meter OFF, plug the USB cable, the LCD
 shows a USB symbol. The meter leaves transfer mode shortly after
@@ -131,6 +142,21 @@ except SessionLost:
     raise SystemExit("unplugged mid-download — replug and retry")
 ```
 
+**TESTAmed GlucoCheck Advance & other TaiDoc TD-42xx rebadges** — same
+CP2110 bridge and plug-in dance as the GL 49, different frame dialect:
+
+```python
+from glucobridge import Td42xxUsbMeter
+from glucobridge.backends.gl49_usb import SessionLost, UsbError
+
+with Td42xxUsbMeter() as m:              # meter awake (USB frames wake it)
+    if not m.wait_for_session(timeout=90):
+        raise SystemExit("no session — replug and retry")
+    print(m.device_info())               # {'model': 'TD-4288', ...}
+    for r in m.download():
+        print(r.timestamp, f"{r.value:.0f} mg/dL")
+```
+
 **OneTouch Ultra Plus Reflect / Verio 2015 family** — enumerates as
 USB mass storage; the data path is SCSI registers, so the LIFESCAN
 volume must stay MOUNTED (unmounting ejects the medium):
@@ -147,6 +173,19 @@ with LifeScanUSBMeter(device) as m:
     print(m.device_info())               # serial, model, firmware
     for r in m.download():
         print(r.timestamp, f"{r.value:.0f} mg/dL", r.meal or "")
+```
+
+**Accu-Chek Guide** — enumerates as a vendor-specific bulk device
+(`173a:21d5`); the meter initiates the transfer, so start it on the
+device first (memory menu → transfer, LCD shows "Transferring data"):
+
+```python
+from glucobridge import GuideUsbMeter
+
+with GuideUsbMeter() as m:               # waits up to 20 s for the meter
+    print(m.device_info())               # model/serial as reported by the meter
+    for r in m.download():               # the meter then shows
+        print(r.timestamp, f"{r.value:.0f} mg/dL")   # "Data transfer completed"
 ```
 
 Every `Reading` exports the same way regardless of transport —
@@ -269,9 +308,15 @@ whatever bond BlueZ holds; but keep `bluetoothctl` *exited* afterwards
 .venv/bin/python -m pytest tests/ -q
 ```
 
-The test suite includes spec-derived byte vectors for all four protocol
-families (GSS RACP, FORA 8-byte frames, Verio framed commands, LifeScan
-MSC USB packets) and simulated meters exercising the full download flows
-— no hardware needed.
-Protocol reverse-engineering writeups: `FINDINGS.md` (GL49/GSS),
-`FINDINGS-fora.md` (FORA/TESTAmed), and the Verio section in `FINDINGS.md`.
+The test suite includes spec-derived byte vectors for every protocol
+family (GSS RACP, FORA 8-byte frames, TaiDoc TD-42xx, Verio framed
+commands, LifeScan MSC, IEEE 11073-20601 APDUs) and simulated meters
+exercising the full download flows — no hardware needed.  Live captures
+double as fixtures wherever a meter has been verified.
+
+`tools/` holds the raw probes used during reverse-engineering
+(`gl49_hid_diag.py`, `gl49_usb.py`, `glucocheck_probe.py`); the latter
+fingerprints any CP2110-based meter's dialect (FORA vs TD-42xx) in one
+run.
+Protocol reverse-engineering writeups: `FINDINGS.md` (GL49/GSS/Guide/
+Verio), `FINDINGS-fora.md` (FORA/TESTAmed).
