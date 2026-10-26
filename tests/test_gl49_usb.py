@@ -54,14 +54,15 @@ def test_parse_device_id():
 
 # ---------------------------------------------------------------- records
 LIVE_RECORDS = [
-    ("55350a167990", (2026, 10, 21, 22, 10, 121)),
-    ("55351308a080", (2026, 10, 21, 8, 19, 160)),
-    ("543500077a80", (2026, 10, 20, 7, 0, 122)),
+    ("5a35352ec288", (2026, 10, 26, 14, 53, 194), "before"),  # apple-tagged
+    ("55350a167990", (2026, 10, 21, 22, 10, 121), None),
+    ("55351308a080", (2026, 10, 21, 8, 19, 160), None),
+    ("543500077a80", (2026, 10, 20, 7, 0, 122), None),
 ]
 
 
-@pytest.mark.parametrize("hexrec,expect", LIVE_RECORDS)
-def test_parse_live_records(hexrec, expect):
+@pytest.mark.parametrize("hexrec,expect,meal", LIVE_RECORDS)
+def test_parse_live_records(hexrec, expect, meal):
     r = parse_record(bytes.fromhex(hexrec))
     y, mo, d, h, mi, v = expect
     assert r is not None
@@ -69,6 +70,18 @@ def test_parse_live_records(hexrec, expect):
     assert r.timestamp.day == d
     assert r.timestamp.hour == h and r.timestamp.minute == mi
     assert r.value == float(v) and r.unit == "mg/dL"
+    assert r.meal == meal
+
+
+def test_meal_marks():
+    # mark bits = swapped r2 >> 5; craft hour 10 + mark m: r2 = 10 | (m<<5)
+    # wire order: swapped [r0,r1,r2,r3,r4,r5] -> wire [r1,r0,r3,r2,r5,r4]
+    r0, r1, r3, r4, r5 = 0x34, 0x45, 0x0B, 0x00, 0x50   # 2026-02-05 10:11
+    for mark, want in ((0, None), (1, "before"), (2, "after"), (3, "QC")):
+        r2 = 10 | (mark << 5)     # hour 10
+        wire = bytes([r1, r0, r3, r2, r5, r4])
+        r = parse_record(wire)
+        assert r is not None and r.meal == want, mark
 
 
 def test_parse_record_blank_and_invalid():

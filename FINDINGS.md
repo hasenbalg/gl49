@@ -216,9 +216,10 @@ set as the GlucoCheck Advance, at a different speed:
   bytes (`0x418e12`), then the parser (`0x418fa0`) reads, on the swapped
   bytes `r0..r5`: `value = r5 | ((r4 & 3) << 8)`, `year = 2000 + (r0 >> 1)`,
   `month = (r1 >> 5) | ((r0 & 1) << 3)` (1 = January), `day = r1 & 0x1F`,
-  `hour = r2 & 0x1F`, `minute = r3 & 0x3F`. The app parses NO
-  temperature; leftover bits (`r4>>2`, `r2>>5`, `r3>>6`) are ignored
-  (likely meal-mark bits);
+  `hour = r2 & 0x1F`, `minute = r3 & 0x3F`, `meal mark = r2 >> 5`
+  (0 none, 1 before meal [apple button, live-confirmed], 2 after, 3 QC).
+  `r3>>6` and `r4>>2` are ignored by the vendor app (`r4>>2` drifts with
+  ambient warmth over the day — possibly temp+10 degC, unconfirmed);
 * enumeration quirks: only enumerates on some ports (marginal
   connector); needs the NEW USB enumeration scheme
   (`old_scheme_first=0`); meter must show the USB symbol (connect

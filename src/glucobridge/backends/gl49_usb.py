@@ -33,10 +33,11 @@ word, then the fields are read off the swapped bytes ``r0..r5``::
     day    = r1 & 0x1F
     hour   = r2 & 0x1F
     minute = r3 & 0x3F
+    meal   = r2 >> 5   (0 none, 1 before meal [apple], 2 after, 3 QC —
+                        FORA flag scheme, confirmed live against the meter)
 
-There is no temperature field. The bits the vendor app ignores
-(``r4>>2``, ``r2>>5``, ``r3>>6``) likely hold the meal marks but are
-not decoded.
+``r3>>6`` and ``r4>>2`` are ignored by the vendor app (``r4>>2`` tracks
+ambient warmth over the day, possibly temp+10 degC, left unlabeled).
 
 CP2110 notes (AN434): the UART-config feature report (0x50) carries
 the baud rate BIG-ENDIAN (a silent 9600 fallback otherwise); the
@@ -60,6 +61,10 @@ VID, PID = 0x10C4, 0xEA80          # Silicon Labs CP2110
 BAUD = 19200
 
 MODEL_BY_CODE = {0x4149: "FORA TD4149 (Beurer GL 49)"}
+
+# meal mark = swapped r2 >> 5 (FORA flag scheme; 1 confirmed live with the
+# meter's apple button = before meal)
+MEAL_BY_MARK = {0: None, 1: "before", 2: "after", 3: "QC"}
 
 
 class UsbError(RuntimeError):
@@ -102,7 +107,10 @@ def parse_device_id(r: bytes) -> dict:
 
 
 def parse_record(rec: bytes) -> Optional[Reading]:
-    """One 6-byte wire record -> Reading, or None if blank/invalid."""
+    """One 6-byte wire record -> Reading, or None if blank/invalid.
+
+    Meal mark (apple button = before meal) decodes from swapped r2 >> 5.
+    """
     if len(rec) != 6 or rec == b"\x00" * 6:
         return None
     r0, r1, r2, r3, r4, r5 = swap_pairs(rec)
@@ -112,6 +120,7 @@ def parse_record(rec: bytes) -> Optional[Reading]:
     day = r1 & 0x1F
     hour = r2 & 0x1F
     minute = r3 & 0x3F
+    mark = r2 >> 5
     if not (day and 1 <= month <= 12 and hour < 24 and minute < 60
             and value):
         return None
@@ -119,8 +128,12 @@ def parse_record(rec: bytes) -> Optional[Reading]:
         ts = dt.datetime(year, month, day, hour, minute)
     except ValueError:
         return None
-    return Reading(value=float(value), unit="mg/dL", timestamp=ts,
-                   raw=bytes(rec))
+    reading = Reading(value=float(value), unit="mg/dL", timestamp=ts,
+                      raw=bytes(rec))
+    reading.meal = MEAL_BY_MARK.get(mark)
+    if mark not in MEAL_BY_MARK:
+        reading.status.append(f"meal_mark_{mark}")
+    return reading
 
 
 # ------------------------------------------------------------------ device
