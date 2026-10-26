@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from glucobridge.backends.gl49_usb import (  # noqa: E402
-    Gl49UsbMeter, SessionLost, UsbError, frame, parse_record)
+    Gl49UsbMeter, SessionLost, UsbError, frame, parse_record, swap_pairs)
 
 
 def dump(label, r):
@@ -45,8 +45,13 @@ def main():
                     if rec == b"\x00" * 6:
                         continue
                     rd = parse_record(rec)
+                    sw = swap_pairs(rec)
                     print(f"    rec{2 * idx + half}: {rec.hex(' ')}  -> "
                           f"{rd if rd else '(undecoded)'}")
+                    # unknown fields the vendor app ignores (meal-mark cand.)
+                    print(f"        sw={sw.hex(' ')}  "
+                          f"r2hi={sw[2] >> 5}  r3hi={sw[3] >> 6}  "
+                          f"r4hi={sw[4] >> 2}")
     except SessionLost as e:
         sys.exit(f"{e} — replug and retry")
     finally:
