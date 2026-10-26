@@ -336,7 +336,7 @@ whatever bond BlueZ holds; but keep `bluetoothctl` *exited* afterwards
 ```bash
 .venv/bin/pip install -e '.[dev]'
 .venv/bin/python -m pytest tests/ -q
-.venv/bin/ruff check src tests tools
+.venv/bin/ruff check src tests tools examples
 ```
 
 The test suite includes spec-derived byte vectors for every protocol
@@ -348,6 +348,8 @@ double as fixtures wherever a meter has been verified.
 `tools/` holds the raw probes used during reverse-engineering
 (`gl49_hid_diag.py`, `gl49_usb.py`, `glucocheck_probe.py`); the latter
 fingerprints any CP2110-based meter's dialect (FORA vs TD-42xx) in one
-run.
+run.  `examples/` contains runnable, heavily-commented usage scripts —
+scan, pairing, BLE/USB downloads and live streaming — that mirror this
+README's API section.
 Protocol reverse-engineering writeups: `FINDINGS.md` (GL49/GSS/Guide/
 Verio), `FINDINGS-fora.md` (FORA/TESTAmed).
