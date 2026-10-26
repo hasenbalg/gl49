@@ -11,6 +11,7 @@ requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = [
     "bleak>=0.22",
+    "dbus-fast>=2",         # BlueZ pairing agent (also a bleak dep on Linux)
 ]
 
 [project.optional-dependencies]

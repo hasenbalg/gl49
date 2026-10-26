@@ -40,6 +40,20 @@ python3 -m venv .venv && .venv/bin/pip install -e .
 
 Requires BlueZ (Linux) with a Bluetooth adapter.
 
+**Dependencies.** The only runtime dependencies are
+[`bleak`](https://github.com/hbbluetoothtools/bleak) (BLE scanning, GATT
+connections, notifications) and its companion
+[`dbus-fast`](https://github.com/bluetooth-dev-enterprise/python-dbus-fast)
+(pure-Python D-Bus, used only for the BlueZ pairing agent; it ships with
+bleak on Linux anyway). The GL 49 USB backend additionally needs
+[`hidapi`](https://pypi.org/project/hidapi/) — install it with
+`pip install -e ".[usb]"` — and talks to the meter's CP2110 HID-UART
+bridge directly via HID reports, so no serial driver stack is involved.
+Everything else is the standard library. The package targets Python ≥ 3.10
+on Linux: the BlueZ agent paths and the USB port lock use `fcntl`, and
+while the pure-BLE code imports fine on other OSes, pairing and USB are
+Linux-only. Tests run with `pip install -e ".[dev]"` (pytest).
+
 ## CLI
 
 ```bash
