@@ -284,14 +284,15 @@ How `glucobridge pair` behaves (all live-learned on these meters):
   when passkey entry fails.
 * **Unpairing is one-sided — but consequences differ per meter.**
   `glucobridge unpair <addr>` (library: `await unpair(address)`,
-  idempotent) deletes only this host's bond.  The **GL49** does not
-  care: it re-pairs cleanly right afterwards, no device-side step
-  needed.  The **Accu-Chek Guide** definitively does: it keeps its half
-  of the keys, has no unpair UI, and silently ignores every fresh
-  pairing attempt until it is power-cycled hard (batteries out ~10 s).
-  Treat the other meters as Guide-like unless proven otherwise.  In
-  daily use, keep `pair`/`unpair` out of the workflow entirely — after
-  one successful pairing, `dump` alone is all you need.
+  idempotent) deletes only this host's bond.  Tested behavior:
+  the **GL49** and the **OneTouch Reflect** do not care — they
+  re-pair cleanly right afterwards, no device-side step needed.  The
+  **Accu-Chek Guide** definitively does: it keeps its half of the
+  keys, has no unpair UI, and silently ignores every fresh pairing
+  attempt until it is power-cycled hard (batteries out ~10 s).
+  Treat unlisted meters as Guide-like unless proven otherwise.  In
+  daily use, keep `pair`/`unpair` out of the workflow entirely —
+  after one successful pairing, `dump` alone is all you need.
 * **First pair against a new host:** if the meter was bonded to another
   machine (or a phone app), that bond competes — delete it on the old
   host or power-cycle the meter, and keep phones away during pairing.

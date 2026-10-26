@@ -67,10 +67,10 @@ async def cmd_unpair(args):
     removed = await unpair(args.address, adapter=args.adapter)
     if removed:
         print(f"unpaired {args.address} (host side)")
-        print("note: the GL49 re-pairs straight away, but the "
-              "Accu-Chek Guide holds on to its key and must be "
-              "power-cycled (batteries out ~10 s) before any re-pair",
-              file=sys.stderr)
+        print("note: the GL49 and OneTouch Reflect re-pair straight "
+              "away, but the Accu-Chek Guide holds on to its key and "
+              "must be power-cycled (batteries out ~10 s) before any "
+              "re-pair", file=sys.stderr)
     else:
         print(f"{args.address} was not paired here -- nothing to do")
     return 0
