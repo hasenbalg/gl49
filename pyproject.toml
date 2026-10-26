@@ -16,7 +16,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-asyncio"]
-usb = ["hidapi>=0.14"]          # GL49 USB (CP2110 HID-UART)
+usb = ["hidapi>=0.14",           # GL49 USB (CP2110 HID-UART)
+       "pyusb>=1.2"]             # Accu-Chek Guide USB (bulk APDUs)
 
 [project.scripts]
 glucobridge = "glucobridge.cli:main"

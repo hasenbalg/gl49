@@ -119,6 +119,8 @@ async def cmd_info(args):
 async def cmd_usb_dump(args):
     if getattr(args, "backend", "lifescan") == "gl49":
         return await _usb_dump_gl49(args)
+    if getattr(args, "backend", "lifescan") == "guide":
+        return await _usb_dump_guide(args)
     from .backends.lifescan_usb import LifeScanUSBMeter, detect_device
     device = args.device or detect_device()
     if not device:
@@ -160,6 +162,26 @@ async def _usb_dump_gl49(args):
         readings = await asyncio.to_thread(meter.download)
     except SessionLost as e:
         print(f"{e} — replug and retry", file=sys.stderr)
+        return 1
+    finally:
+        meter.close()
+    readings = _filter_since(readings, args.since)
+    _readings_out(readings, args)
+
+
+async def _usb_dump_guide(args):
+    from .backends.guide_usb import GuideUsbMeter, UsbError
+    meter = GuideUsbMeter()
+    try:
+        await asyncio.to_thread(meter.connect)
+    except UsbError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    try:
+        readings = await asyncio.to_thread(meter.download)
+    except UsbError as e:
+        print(f"error: {e} — leave the meter on its 'data transfer' "
+              "screen and retry", file=sys.stderr)
         return 1
     finally:
         meter.close()
@@ -218,7 +240,7 @@ def main(argv=None) -> int:
     s.add_argument("--device", metavar="/dev/sgN",
                    help="sg/block node (default: auto-detect by vendor; "
                         "LifeScan backend only)")
-    s.add_argument("--backend", choices=["lifescan", "gl49"],
+    s.add_argument("--backend", choices=["lifescan", "gl49", "guide"],
                    default="lifescan")
     s.add_argument("--json", action="store_true")
     s.add_argument("--csv", metavar="FILE")
