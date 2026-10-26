@@ -231,11 +231,22 @@ async def _pair_once(address: str, passkey: Optional[str],
     _trace(f"agent registered as {capability}, calling Pair...")
 
     # A forgotten device has no Device1 object until re-discovered.
+    # NOTE: BleakScanner.discover() always runs the FULL timeout before
+    # returning -- meters sit in a pairing window of roughly 30 s, so a
+    # single long scan reliably expires it (observed as
+    # "Authentication Canceled" ~30 s into SMP).  Scan in short bursts
+    # and return the instant the target shows up.
     if dev_path not in objects:
         from bleak import BleakScanner
         _trace(f"{dev_path} not cached by BlueZ, discovering...")
-        found = await BleakScanner.discover(timeout=min(timeout, 30.0))
-        if not any(d.address == address for d in found):
+        deadline = time.monotonic() + min(timeout, 60.0)
+        found = False
+        while time.monotonic() < deadline and not found:
+            for d in await BleakScanner.discover(timeout=3.0):
+                if d.address == address:
+                    found = True
+                    break
+        if not found:
             bus.disconnect()
             raise RuntimeError(
                 f"{address} not discoverable — make the meter "
