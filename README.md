@@ -282,16 +282,16 @@ How `glucobridge pair` behaves (all live-learned on these meters):
   short transfer windows.  `--just-works` forces the
   NoInputNoOutput flow; there is also an automatic Just Works retry
   when passkey entry fails.
-* **Never unpair one side alone.** These meters have no unpair UI: if
-  BlueZ forgets its keys while the meter still holds its half (e.g.
-  after `--renew`, or a formatted host), the meter silently ignores
-  fresh pairing attempts.  To delete this host's bond deliberately,
-  use `glucobridge unpair <addr>` (library: `await unpair(address)`,
-  idempotent) — and then power-cycle the meter hard (Bluetooth off in
-  its menu, then batteries out for ~10 s) before pairing it anywhere
-  again.  In daily use, keep `pair`/`unpair` out of the workflow
-  entirely — after one successful pairing, `dump` alone is all you
-  need.
+* **Unpairing is one-sided — but consequences differ per meter.**
+  `glucobridge unpair <addr>` (library: `await unpair(address)`,
+  idempotent) deletes only this host's bond.  The **GL49** does not
+  care: it re-pairs cleanly right afterwards, no device-side step
+  needed.  The **Accu-Chek Guide** definitively does: it keeps its half
+  of the keys, has no unpair UI, and silently ignores every fresh
+  pairing attempt until it is power-cycled hard (batteries out ~10 s).
+  Treat the other meters as Guide-like unless proven otherwise.  In
+  daily use, keep `pair`/`unpair` out of the workflow entirely — after
+  one successful pairing, `dump` alone is all you need.
 * **First pair against a new host:** if the meter was bonded to another
   machine (or a phone app), that bond competes — delete it on the old
   host or power-cycle the meter, and keep phones away during pairing.

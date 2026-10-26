@@ -88,10 +88,11 @@ async def pair(address: str, passkey: Optional[str] = None,
 
     If the device is already bonded this returns without touching the
     keys (idempotent) unless renew=True, which first removes the BlueZ
-    bond and pairs from scratch.  Cheap firmwares frequently REFUSE
-    re-pairing while they still hold their side of an old bond, so a
-    renew may also require deleting the bond on the meter (Bluetooth
-    menu) and `bluetoothctl remove <addr>` stays automatic here.
+    bond and pairs from scratch.  Some firmwares -- definitively the
+    Accu-Chek Guide, while the GL49 does not care -- REFUSE re-pairing
+    while they still hold their side of an old bond, so a renew may
+    also require a hard power-cycle of the meter; removing the host
+    side is always automatic here.
 
     Without an explicit `capability`, try passkey entry first and fall
     back to Just Works: some firmwares refuse passkey-entry pairing even
@@ -123,12 +124,14 @@ async def unpair(address: str, adapter: str = "hci0") -> bool:
     """Remove the BlueZ-side bond for a device (``Device1.Remove()``).
 
     Returns True if a bond was removed, False if BlueZ had nothing to
-    remove (idempotent).  The METER normally keeps its half of the keys
-    and has no unpair UI, so it must be power-cycled (Bluetooth off in
-    its menu, batteries out ~10 s) before it will accept a fresh
-    pairing -- otherwise it silently ignores pairing attempts.  Only
-    use this to hand the meter to another host; to keep using it here,
-    just leave the bond alone.
+    remove (idempotent).  What happens on the METER side afterwards
+    differs per model: the Beurer GL49 re-pairs without any further
+    step, while the Accu-Chek Guide keeps its half of the keys (no
+    unpair UI) and silently ignores fresh pairings until it is hard
+    power-cycled (batteries out ~10 s) -- assume Guide-like behavior
+    unless a meter is known otherwise.  Only use this to hand the
+    meter to another host; to keep using it here, just leave the bond
+    alone.
     """
     from dbus_fast import BusType
     from dbus_fast.aio import MessageBus

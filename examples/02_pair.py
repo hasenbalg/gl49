@@ -45,8 +45,12 @@ async def main() -> None:
     #
     #     from glucobridge import unpair
     #     if await unpair(address):
-    #         print("host bond removed — power-cycle the meter before "
-    #               "pairing it anywhere again (it keeps its own key!)")
+    #         print("host bond removed")
+    #
+    # What the METER does next depends on the model: the GL49 re-pairs
+    # straight away; the Accu-Chek Guide holds on to its key and
+    # silently ignores re-pairing until it is power-cycled (batteries
+    # out ~10 s).  Assume Guide-like behavior for unknown meters.
     # ------------------------------------------------------------------
 
 
