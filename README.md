@@ -177,9 +177,9 @@ from glucobridge import GlucoBridge, pair
 async def main():
     address = "EA:7B:85:08:A1:D9"          # OneTouch Ultra Plus Reflect
     # Interactive: prompts "passkey shown on device: _" in the terminal.
+    # Type the code that is on the meter's display RIGHT NOW — the code
+    # is regenerated for every attempt, so it can never be pre-supplied.
     await pair(address)
-    # Scripted instead (e.g. code read from a photo of the display):
-    # await pair(address, passkey="630802")
 
     # Pairing is one-time: BlueZ stores the keys in /var/lib/bluetooth,
     # every later connect is transparent and fully unattended.
@@ -190,35 +190,77 @@ async def main():
 asyncio.run(main())
 ```
 
-If a desktop agent (blueman) is running it may answer the prompt first;
-`pair()` deliberately takes over as the default agent for its duration.
+A desktop agent (blueman, an attached `bluetoothctl` session) can answer
+the prompt before we do.  `pair` registers itself as the default agent
+for its duration — but close other agent sessions first anyway; a
+*connected* `bluetoothctl` still steals `RequestPasskey` calls.
 
 ## Pairing notes
 
+How `glucobridge pair` behaves (all live-learned on these meters):
+
+* **One attempt at a time, answer fast.** Meters open a pairing window
+  of roughly 30 s from the moment their pairing screen appears, and
+  BlueZ adds its own 30 s pairing timer.  Have the meter already on its
+  pairing display and type the code the instant the terminal asks —
+  late answers die as `Authentication Canceled`, and `Page Timeout`
+  simply means the meter wasn't connectable (window closed / asleep):
+  wake it and retry.
+* **The code is per-attempt.** It is generated when the handshake
+  starts, so a stale on-screen code never matches — re-enter the
+  pairing screen for every new attempt.
+* **Idempotent by design.** If BlueZ already holds a bond, `pair` just
+  marks the device trusted and exits; it will never touch working keys
+  unless you pass `--renew` (which removes the BlueZ bond first).
+  On success the device is auto-trusted so it can reconnect inside its
+  short transfer windows.  `--just-works` forces the
+  NoInputNoOutput flow; there is also an automatic Just Works retry
+  when passkey entry fails.
+* **Never unpair one side alone.** These meters have no unpair UI: if
+  BlueZ forgets its keys while the meter still holds its half (e.g.
+  after `--renew`, or a formatted host), the meter silently ignores
+  fresh pairing attempts.  Recovery: power-cycle the meter hard
+  (Bluetooth off in its menu, then batteries out for ~10 s), and keep
+  `pair` out of your daily workflow entirely — after one successful
+  pairing, `dump` alone is all you need.
+* **First pair against a new host:** if the meter was bonded to another
+  machine (or a phone app), that bond competes — delete it on the old
+  host or power-cycle the meter, and keep phones away during pairing.
+* **Raspberry Pi hosts** ship Bluetooth soft-blocked out of the box:
+  `rfkill unblock bluetooth` before anything else (`rfkill list` proves
+  it).
+* Pairing traces every agent callback to stderr (`-v` shows more);
+  when a handshake fails, that trace pinpoints which side dropped out.
+
+Per meter:
+
 * **Beurer GL 49** — enable Bluetooth in the device menu first (SET
-  until the BT symbol, toggle on, confirm with SET). The meter only
-  advertises while it wants to transfer (BT symbol flashing): press the
-  Apple/app key, pull out the test strip, call up the memory, or switch
-  it off. It then shows a 6-digit code;
-  `glucobridge pair <addr> --passkey NNNNNN` answers the BlueZ prompt.
-  Keys are stored by BlueZ; later connects are transparent. Keep phones
-  running the Beurer app away — a bonded phone hogs the connection.
-* **Accu-Chek Guide** — pairs the same way (passkey shown on the meter).
-* **TESTAmed GlucoCheck Advance** — standard Glucose Service, no pairing
-  dance needed; connects directly. It also exposes a Nordic UART service
-  (00001523-…) which is *not* used for glucose data. Its firmware
-  reports the concentration in the formal GSS SI unit (kg/L), which the
-  library converts to mg/dL automatically.
-* **iFORA meters** — no pairing needed; the FORA backend connects
-  directly (service FFF0). They never push live data, so `watch` polls
-  the record count.
+  until the BT symbol, toggle on, confirm with SET), then enter the
+  pairing screen (`PA` on the display) immediately before pairing.
+  Outside pairing mode it only advertises while it wants to transfer
+  (BT symbol flashing): press the Apple/app key, pull out the test
+  strip, call up the memory, or switch it off.  Passkey entry —
+  live-verified with `glucobridge pair` itself.
+* **Accu-Chek Guide** — same passkey flow, live-verified.  Advertises
+  as `meter+<serial>`.
 * **OneTouch Reflect / Flex family** — connect on service `AF9DF7A1…`
-  (write F7A2, notify F7A3). The Reflect asks for pairing
-  (live-verified): `glucobridge pair <addr>` prompts for the meter's
-  6-digit code in the terminal — no GUI agent needed; `--passkey NNNNNN`
-  for scripting. Like the FORA meters they never push: `watch` polls the
-  record counter.
-* Alternatively pair once with `bluetoothctl`.
+  (write F7A2, notify F7A3).  Passkey pairing, live-verified.  Note the
+  meter also exposes a *dead* standard Glucose Service as a decoy —
+  `dump` auto-falls through, but a forced `--backend gls` will fail.
+  Like the FORA meters they never push: `watch` polls the record
+  counter.
+* **TESTAmed GlucoCheck Advance** — Just Works pairing: `pair`
+  completes with no prompt (live-verified).  It also exposes a Nordic
+  UART service (00001523-…) which is *not* used for glucose data.  Its
+  firmware reports the concentration in the formal GSS SI unit (kg/L),
+  which the library converts to mg/dL automatically.
+* **iFORA meters** — no pairing needed; the FORA backend connects
+  directly (service FFF0).  They never push live data, so `watch` polls
+  the record count.
+
+Alternatively pair once with `bluetoothctl` — `pair` and `dump` will use
+whatever bond BlueZ holds; but keep `bluetoothctl` *exited* afterwards
+(a lingering attached session steals passkey prompts from the library).
 
 ## Development
 
