@@ -146,7 +146,24 @@ async def unpair(address: str, adapter: str = "hci0") -> bool:
             return False
         dev_intro = await bus.introspect(BLUEZ_SERVICE, dev_path)
         dev_obj = bus.get_proxy_object(BLUEZ_SERVICE, dev_path, dev_intro)
-        await dev_obj.get_interface(DEVICE_IFACE).call_remove()
+        dev_iface = dev_obj.get_interface(DEVICE_IFACE)
+        call_remove = getattr(dev_iface, "call_remove", None)
+        if call_remove is not None:
+            await call_remove()
+        else:
+            # Some BlueZ/dbus-fast combinations expose Device1 without
+            # the Remove method in their generated proxy (seen live on
+            # BlueZ 5.x + dbus-fast 5.2.0).  Adapter1.RemoveDevice()
+            # removes the same bond and device object.
+            _trace("Device1.Remove not exposed; using "
+                   f"Adapter1.RemoveDevice({dev_path})", "unpair")
+            adp_intro = await bus.introspect(BLUEZ_SERVICE,
+                                             f"/org/bluez/{adapter}")
+            adp_obj = bus.get_proxy_object(BLUEZ_SERVICE,
+                                           f"/org/bluez/{adapter}",
+                                           adp_intro)
+            await adp_obj.get_interface(ADAPTER_IFACE) \
+                        .call_remove_device(dev_path)
         _trace(f"removed BlueZ bond for {address}", "unpair")
         return True
     finally:
